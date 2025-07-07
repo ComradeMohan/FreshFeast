@@ -6,7 +6,8 @@ import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { signInWithEmailAndPassword } from 'firebase/auth'
-import { auth } from '@/lib/firebase'
+import { doc, getDoc } from 'firebase/firestore'
+import { auth, db } from '@/lib/firebase'
 
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -33,17 +34,32 @@ export default function DeliveryLoginPage() {
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
     try {
-      await signInWithEmailAndPassword(auth, values.email, values.password)
-      toast({
-        title: "Logged in successfully!",
-      })
-      router.push('/delivery/dashboard')
+      const userCredential = await signInWithEmailAndPassword(auth, values.email, values.password)
+      const user = userCredential.user
+
+      // Check agent's status in Firestore
+      const agentDocRef = doc(db, 'deliveryAgents', user.uid)
+      const agentDocSnap = await getDoc(agentDocRef)
+
+      if (agentDocSnap.exists() && agentDocSnap.data().status === 'approved') {
+        toast({
+          title: "Logged in successfully!",
+        })
+        router.push('/delivery/dashboard')
+      } else {
+        await auth.signOut(); // Sign out unapproved or non-existent agents
+        toast({
+          variant: "destructive",
+          title: "Login Failed",
+          description: "Your account is not yet approved. Please wait for admin confirmation.",
+        })
+      }
     } catch (error: any) {
       console.error("Login error:", error)
       toast({
         variant: "destructive",
         title: "Uh oh! Something went wrong.",
-        description: "Invalid credentials. Please try again.",
+        description: "Invalid credentials or your account is not approved.",
       })
     }
   }
