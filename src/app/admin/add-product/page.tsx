@@ -119,7 +119,7 @@ export default function AddProductPage() {
       toast({
         variant: "destructive",
         title: "Uh oh! Something went wrong.",
-        description: error.message || "There was a problem adding the new package.",
+        description: error.message || "There was a problem adding the new package. Please check your Supabase table's Row Level Security policies and ensure INSERT operations are allowed.",
       })
     } finally {
       setIsSubmitting(false)
