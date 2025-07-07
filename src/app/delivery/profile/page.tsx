@@ -7,17 +7,17 @@ import { z } from 'zod'
 import { useAuthState } from 'react-firebase-hooks/auth'
 import { auth, db, signOut } from '@/lib/firebase'
 import { updatePassword } from 'firebase/auth'
-import { doc, getDoc } from 'firebase/firestore'
+import { doc, getDoc, onSnapshot } from 'firebase/firestore'
 import { useRouter } from 'next/navigation'
 import Image from 'next/image'
-import { getAssignedAreasForAgent } from './actions'
+import { getAssignedAreasForAgent, updateAgentCapacity } from './actions'
 
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form'
 import { Input } from '@/components/ui/input'
 import { useToast } from '@/hooks/use-toast'
-import { LoaderCircle, UserCircle, LogOut } from 'lucide-react'
+import { LoaderCircle, UserCircle, LogOut, Package, ArrowRight } from 'lucide-react'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion"
 import { Badge } from '@/components/ui/badge'
@@ -31,6 +31,10 @@ const passwordFormSchema = z.object({
   path: ["confirmPassword"],
 });
 
+const capacityFormSchema = z.object({
+  maxDeliveries: z.coerce.number().int().min(0, { message: "Capacity must be 0 or more" }),
+});
+
 type AgentData = {
   firstName: string;
   lastName: string;
@@ -38,6 +42,8 @@ type AgentData = {
   phone: string;
   drivingLicense: string;
   photoUrl: string;
+  maxDeliveries: number;
+  activeOrderCount: number;
 }
 
 export default function DeliveryProfilePage() {
@@ -48,9 +54,13 @@ export default function DeliveryProfilePage() {
   const router = useRouter()
   const { toast } = useToast()
 
-  const form = useForm<z.infer<typeof passwordFormSchema>>({
+  const passwordForm = useForm<z.infer<typeof passwordFormSchema>>({
     resolver: zodResolver(passwordFormSchema),
     defaultValues: { newPassword: "", confirmPassword: "" },
+  })
+
+  const capacityForm = useForm<z.infer<typeof capacityFormSchema>>({
+    resolver: zodResolver(capacityFormSchema),
   })
 
   useEffect(() => {
@@ -60,54 +70,54 @@ export default function DeliveryProfilePage() {
       return;
     }
 
-    const fetchAgentDataAndAreas = async () => {
-      setUserLoading(true);
-      
-      const agentDocRef = doc(db, "deliveryAgents", user.uid);
-      const agentDocSnap = await getDoc(agentDocRef);
-      
-      if (agentDocSnap.exists()) {
-        setAgentData(agentDocSnap.data() as AgentData);
-      } else {
-        toast({ variant: 'destructive', title: "Not a delivery agent" });
-        router.push('/delivery/login');
-        setUserLoading(false);
-        return;
-      }
-      
-      const areas = await getAssignedAreasForAgent(user.uid);
-      setAssignedAreas(areas);
-      
-      setUserLoading(false);
+    const fetchAreas = async () => {
+        const areas = await getAssignedAreasForAgent(user.uid);
+        setAssignedAreas(areas);
     }
-    fetchAgentDataAndAreas();
-  }, [user, authLoading, router, toast])
+    fetchAreas();
+
+    const agentDocRef = doc(db, "deliveryAgents", user.uid);
+    const unsubscribe = onSnapshot(agentDocRef, (docSnap) => {
+        if (docSnap.exists()) {
+            const data = docSnap.data() as AgentData
+            setAgentData(data);
+            capacityForm.reset({ maxDeliveries: data.maxDeliveries });
+        } else {
+            toast({ variant: 'destructive', title: "Not a delivery agent" });
+            router.push('/delivery/login');
+        }
+        setUserLoading(false);
+    });
+    
+    return () => unsubscribe();
+  }, [user, authLoading, router, toast, capacityForm])
 
   async function onSubmitPassword(values: z.infer<typeof passwordFormSchema>) {
     if (!user) return;
     try {
       await updatePassword(user, values.newPassword);
-      toast({
-        title: "Password updated successfully!",
-        description: "Your password has been changed.",
-      });
-      form.reset();
+      toast({ title: "Password updated successfully!", description: "Your password has been changed." });
+      passwordForm.reset();
     } catch (error: any) {
       console.error("Password update error:", error);
-      toast({
-        variant: "destructive",
-        title: "Error updating password",
-        description: "This is a sensitive operation that may require you to sign in again. Please log out and log back in to change your password.",
-      });
+      toast({ variant: "destructive", title: "Error updating password", description: "This is a sensitive operation that may require you to sign in again." });
     }
   }
 
+  async function onSubmitCapacity(values: z.infer<typeof capacityFormSchema>) {
+    if (!user) return;
+    const result = await updateAgentCapacity(user.uid, values.maxDeliveries);
+    if (result.success) {
+      toast({ title: "Capacity Updated", description: "Your maximum delivery capacity has been set." });
+    } else {
+      toast({ variant: "destructive", title: "Update Failed", description: result.error });
+    }
+  }
+
+
   const handleLogout = async () => {
     await signOut(auth);
-    toast({
-      title: 'Logged out',
-      description: 'You have been successfully logged out.',
-    });
+    toast({ title: 'Logged out', description: 'You have been successfully logged out.' });
     router.push('/delivery/login');
   }
   
@@ -144,28 +154,24 @@ export default function DeliveryProfilePage() {
             )}
             <div className="flex flex-col">
               <span className="text-sm text-muted-foreground">Name</span>
-              {isLoading ? <Skeleton className="h-6 w-48 mt-1" /> : <span className="font-medium">{agentData?.firstName} {agentData?.lastName}</span>}
+              <span className="font-medium">{agentData?.firstName} {agentData?.lastName}</span>
             </div>
              <div className="flex flex-col">
               <span className="text-sm text-muted-foreground">Email</span>
-              {isLoading ? <Skeleton className="h-6 w-64 mt-1" /> : <span className="font-medium">{agentData?.email}</span>}
+              <span className="font-medium">{agentData?.email}</span>
             </div>
              <div className="flex flex-col">
               <span className="text-sm text-muted-foreground">Phone</span>
-              {isLoading ? <Skeleton className="h-6 w-32 mt-1" /> : <span className="font-medium">{agentData?.phone}</span>}
+              <span className="font-medium">{agentData?.phone}</span>
             </div>
              <div className="flex flex-col">
               <span className="text-sm text-muted-foreground">Driving License</span>
-              {isLoading ? <Skeleton className="h-6 w-40 mt-1" /> : <span className="font-medium">{agentData?.drivingLicense}</span>}
+              <span className="font-medium">{agentData?.drivingLicense}</span>
             </div>
             <Separator className="my-4" />
             <div className="flex flex-col">
               <span className="text-sm text-muted-foreground">Assigned Delivery Areas</span>
-              {isLoading ? (
-                <div className="mt-2 space-y-2">
-                  <Skeleton className="h-6 w-3/4" />
-                </div>
-              ) : assignedAreas.length > 0 ? (
+              {assignedAreas.length > 0 ? (
                 <div className="flex flex-wrap gap-2 mt-2">
                   {assignedAreas.map((area) => (
                     <Badge key={area} variant="secondary" className="text-base">
@@ -182,6 +188,45 @@ export default function DeliveryProfilePage() {
 
         <Card>
           <CardHeader>
+            <CardTitle>Delivery Capacity</CardTitle>
+            <CardDescription>Manage your current workload and delivery limit.</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="flex items-center justify-between p-4 rounded-lg bg-muted">
+                <div className="flex items-center gap-3">
+                    <Package className="h-6 w-6 text-primary" />
+                    <div>
+                        <p className="text-sm text-muted-foreground">Active Deliveries</p>
+                        <p className="text-2xl font-bold">{agentData?.activeOrderCount ?? 0} / {agentData?.maxDeliveries ?? 0}</p>
+                    </div>
+                </div>
+            </div>
+             <Form {...capacityForm}>
+              <form onSubmit={capacityForm.handleSubmit(onSubmitCapacity)} className="flex items-end gap-4 mt-6">
+                <FormField
+                  control={capacityForm.control}
+                  name="maxDeliveries"
+                  render={({ field }) => (
+                    <FormItem className="flex-grow">
+                      <FormLabel>Set Max Deliveries</FormLabel>
+                      <FormControl>
+                        <Input type="number" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <Button type="submit" disabled={capacityForm.formState.isSubmitting}>
+                  {capacityForm.formState.isSubmitting ? <LoaderCircle className="animate-spin" /> : "Save"}
+                </Button>
+              </form>
+            </Form>
+          </CardContent>
+        </Card>
+
+
+        <Card>
+          <CardHeader>
             <CardTitle>Account Settings</CardTitle>
             <CardDescription>Manage your password and other account settings.</CardDescription>
           </CardHeader>
@@ -190,10 +235,10 @@ export default function DeliveryProfilePage() {
               <AccordionItem value="item-1">
                 <AccordionTrigger>Change Password</AccordionTrigger>
                 <AccordionContent>
-                  <Form {...form}>
-                    <form onSubmit={form.handleSubmit(onSubmitPassword)} className="space-y-6 pt-4">
+                  <Form {...passwordForm}>
+                    <form onSubmit={passwordForm.handleSubmit(onSubmitPassword)} className="space-y-6 pt-4">
                       <FormField
-                        control={form.control}
+                        control={passwordForm.control}
                         name="newPassword"
                         render={({ field }) => (
                           <FormItem>
@@ -206,7 +251,7 @@ export default function DeliveryProfilePage() {
                         )}
                       />
                       <FormField
-                        control={form.control}
+                        control={passwordForm.control}
                         name="confirmPassword"
                         render={({ field }) => (
                           <FormItem>
@@ -218,8 +263,8 @@ export default function DeliveryProfilePage() {
                           </FormItem>
                         )}
                       />
-                      <Button type="submit" disabled={form.formState.isSubmitting}>
-                        {form.formState.isSubmitting ? <LoaderCircle className="animate-spin" /> : "Update Password"}
+                      <Button type="submit" disabled={passwordForm.formState.isSubmitting}>
+                        {passwordForm.formState.isSubmitting ? <LoaderCircle className="animate-spin" /> : "Update Password"}
                       </Button>
                     </form>
                   </Form>

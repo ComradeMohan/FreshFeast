@@ -1,7 +1,7 @@
 'use server'
 
 import { db } from '@/lib/firebase'
-import { addDoc, collection, deleteDoc, doc, getDocs, query, serverTimestamp, updateDoc, where } from 'firebase/firestore'
+import { addDoc, collection, deleteDoc, doc, getDocs, query, serverTimestamp, updateDoc, where } from 'firestore'
 import { revalidatePath } from 'next/cache'
 import { z } from 'zod'
 
@@ -18,8 +18,7 @@ export async function addArea(values: z.infer<typeof formSchema>) {
       pincode: values.pincode,
       state: values.state,
       createdAt: serverTimestamp(),
-      assignedAgentId: null,
-      assignedAgentName: null,
+      assignedAgentIds: [], // Start with no agents assigned
     })
     revalidatePath('/admin/areas')
     revalidatePath('/checkout') // To update the dropdown on checkout page
@@ -63,20 +62,19 @@ export async function getApprovedAgents() {
     }
 }
 
-export async function assignAgentToArea(areaId: string, agentId: string | null, agentName: string | null) {
+export async function updateAreaAgents(areaId: string, agentIds: string[]) {
     if (!areaId) {
         return { success: false, error: 'Area ID is missing.' };
     }
     try {
         const areaDocRef = doc(db, 'serviceableAreas', areaId);
         await updateDoc(areaDocRef, {
-            assignedAgentId: agentId,
-            assignedAgentName: agentName,
+            assignedAgentIds: agentIds,
         });
         revalidatePath('/admin/areas');
         return { success: true, error: null };
     } catch (error: any) {
-        console.error('Error assigning agent:', error);
-        return { success: false, error: 'Failed to assign agent.' };
+        console.error('Error assigning agents:', error);
+        return { success: false, error: 'Failed to assign agents.' };
     }
 }

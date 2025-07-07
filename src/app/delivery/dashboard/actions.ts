@@ -1,7 +1,7 @@
 'use server'
 
 import { db } from '@/lib/firebase'
-import { collection, query, where, getDocs, orderBy, doc, updateDoc } from 'firebase/firestore'
+import { collection, query, where, getDocs, orderBy, doc, updateDoc, writeBatch, getDoc, increment } from 'firestore'
 import { format } from 'date-fns'
 import { revalidatePath } from 'next/cache'
 
@@ -27,21 +27,10 @@ export async function getAssignedOrders(agentId: string): Promise<AssignedOrder[
     }
 
     try {
-        // 1. Find areas assigned to the agent
-        const areasRef = collection(db, 'serviceableAreas');
-        const areasQuery = query(areasRef, where('assignedAgentId', '==', agentId));
-        const areasSnapshot = await getDocs(areasQuery);
-        
-        if (areasSnapshot.empty) {
-            return []; // No areas assigned to this agent
-        }
-        const assignedAreaNames = areasSnapshot.docs.map(doc => doc.data().name);
-
-        // 2. Find orders for those areas that are not yet delivered
         const ordersRef = collection(db, 'orders');
         const ordersQuery = query(
             ordersRef, 
-            where('deliveryInfo.city', 'in', assignedAreaNames),
+            where('assignedAgentId', '==', agentId),
             where('status', 'in', ['Pending', 'Out for Delivery']),
             orderBy('createdAt', 'desc')
         );
@@ -72,9 +61,30 @@ export async function updateOrderStatus(orderId: string, status: string) {
         return { success: false, error: 'Order ID or status is missing.' };
     }
 
+    const orderDocRef = doc(db, 'orders', orderId);
+
     try {
-        const orderDocRef = doc(db, 'orders', orderId);
-        await updateDoc(orderDocRef, { status });
+        const orderSnap = await getDoc(orderDocRef);
+        if (!orderSnap.exists()) {
+            throw new Error("Order not found");
+        }
+        const orderData = orderSnap.data();
+        const assignedAgentId = orderData.assignedAgentId;
+        const currentStatus = orderData.status;
+
+        const batch = writeBatch(db);
+        
+        // Update order status
+        batch.update(orderDocRef, { status });
+
+        // If status is changing to a completed state ('Delivered') and there was an assigned agent, decrement their count
+        if (status === 'Delivered' && currentStatus !== 'Delivered' && assignedAgentId) {
+            const agentRef = doc(db, 'deliveryAgents', assignedAgentId);
+            batch.update(agentRef, { activeOrderCount: increment(-1) });
+        }
+        
+        await batch.commit();
+
         revalidatePath('/delivery/dashboard');
         return { success: true, error: null };
     } catch (error: any) {

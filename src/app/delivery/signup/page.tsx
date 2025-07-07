@@ -6,7 +6,7 @@ import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { createUserWithEmailAndPassword } from 'firebase/auth'
-import { doc, setDoc } from 'firebase/firestore'
+import { doc, setDoc } from 'firestore'
 import { auth, db } from '@/lib/firebase'
 import { supabase } from '@/lib/supabase'
 
@@ -96,6 +96,8 @@ export default function DeliverySignupPage() {
         photoUrl: imageUrl,
         createdAt: new Date(),
         status: 'pending_approval',
+        maxDeliveries: 10,
+        activeOrderCount: 0,
       })
 
       toast({

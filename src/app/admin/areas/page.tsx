@@ -7,17 +7,20 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { db } from '@/lib/firebase'
 import { collection, onSnapshot, orderBy, query } from 'firebase/firestore'
-import { addArea, deleteArea, getApprovedAgents, assignAgentToArea } from './actions'
+import { addArea, deleteArea, getApprovedAgents, updateAreaAgents } from './actions'
 
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form'
 import { Input } from '@/components/ui/input'
 import { useToast } from '@/hooks/use-toast'
-import { ArrowLeft, LoaderCircle, Trash2, MapPin } from 'lucide-react'
+import { ArrowLeft, LoaderCircle, Trash2, MapPin, Users } from 'lucide-react'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
+import { Checkbox } from '@/components/ui/checkbox'
+import { ScrollArea } from '@/components/ui/scroll-area'
+import { Separator } from '@/components/ui/separator'
 
 const formSchema = z.object({
   name: z.string().min(1, { message: "Area name is required" }),
@@ -30,8 +33,7 @@ type Area = {
   name: string
   pincode: string
   state: string
-  assignedAgentId?: string | null
-  assignedAgentName?: string | null
+  assignedAgentIds?: string[]
 }
 
 type Agent = {
@@ -39,13 +41,64 @@ type Agent = {
     name: string;
 }
 
+function AgentAssignmentPopover({ area, agents, onAssign }: { area: Area, agents: Agent[], onAssign: (areaId: string, agentIds: string[]) => void }) {
+    const [selectedAgentIds, setSelectedAgentIds] = useState<string[]>(area.assignedAgentIds || []);
+    const [isOpen, setIsOpen] = useState(false);
+
+    const handleAssign = () => {
+        onAssign(area.id, selectedAgentIds);
+        setIsOpen(false);
+    }
+    
+    return (
+        <Popover open={isOpen} onOpenChange={setIsOpen}>
+            <PopoverTrigger asChild>
+                <Button variant="outline">
+                    <Users className="mr-2 h-4 w-4" />
+                    Manage Agents ({area.assignedAgentIds?.length || 0})
+                </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-80 p-0">
+                <div className="p-4">
+                    <h4 className="font-medium leading-none">Assign Agents</h4>
+                    <p className="text-sm text-muted-foreground">Select agents for the "{area.name}" area.</p>
+                </div>
+                 <ScrollArea className="h-48">
+                    <div className="p-4 space-y-2">
+                        {agents.map((agent) => (
+                            <div key={agent.id} className="flex items-center space-x-2">
+                                <Checkbox
+                                    id={`${area.id}-${agent.id}`}
+                                    checked={selectedAgentIds.includes(agent.id)}
+                                    onCheckedChange={(checked) => {
+                                        setSelectedAgentIds(prev => 
+                                            checked ? [...prev, agent.id] : prev.filter(id => id !== agent.id)
+                                        )
+                                    }}
+                                />
+                                <label htmlFor={`${area.id}-${agent.id}`} className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
+                                    {agent.name}
+                                </label>
+                            </div>
+                        ))}
+                    </div>
+                </ScrollArea>
+                <Separator />
+                <div className="p-4 flex justify-end">
+                     <Button onClick={handleAssign}>Save Changes</Button>
+                </div>
+            </PopoverContent>
+        </Popover>
+    )
+}
+
+
 export default function ManageAreasPage() {
   const { toast } = useToast()
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [areas, setAreas] = useState<Area[]>([])
   const [approvedAgents, setApprovedAgents] = useState<Agent[]>([])
   const [loading, setLoading] = useState(true)
-  const [assigning, setAssigning] = useState<string | null>(null);
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -94,16 +147,13 @@ export default function ManageAreasPage() {
       }
   }
 
-  async function handleAssignAgent(areaId: string, value: string) {
-    setAssigning(areaId);
-    const [agentId, agentName] = value.split(':');
-    const result = await assignAgentToArea(areaId, agentId === 'unassigned' ? null : agentId, agentName || null);
+  async function handleAssignAgents(areaId: string, agentIds: string[]) {
+    const result = await updateAreaAgents(areaId, agentIds);
     if (result.success) {
-        toast({ title: 'Agent Assigned', description: `Agent has been ${agentId === 'unassigned' ? 'unassigned' : 'assigned to the area'}.` })
+        toast({ title: 'Agents Assigned', description: `Agent assignments have been updated for the area.` })
     } else {
         toast({ variant: 'destructive', title: 'Assignment Failed', description: result.error })
     }
-    setAssigning(null);
   }
 
   return (
@@ -161,7 +211,7 @@ export default function ManageAreasPage() {
                                 <TableHeader>
                                     <TableRow>
                                         <TableHead>Area</TableHead>
-                                        <TableHead>Assigned Agent</TableHead>
+                                        <TableHead>Assign Agents</TableHead>
                                         <TableHead className="text-right">Actions</TableHead>
                                     </TableRow>
                                 </TableHeader>
@@ -173,25 +223,7 @@ export default function ManageAreasPage() {
                                                 <div className="text-sm text-muted-foreground">{area.state}, {area.pincode}</div>
                                             </TableCell>
                                             <TableCell>
-                                                {assigning === area.id ? (
-                                                     <LoaderCircle className="animate-spin h-5 w-5" />
-                                                ) : (
-                                                    <Select
-                                                        defaultValue={area.assignedAgentId ? `${area.assignedAgentId}:${area.assignedAgentName}` : 'unassigned'}
-                                                        onValueChange={(value) => handleAssignAgent(area.id, value)}
-                                                        disabled={assigning === area.id}
-                                                    >
-                                                        <SelectTrigger className="w-[200px]">
-                                                            <SelectValue placeholder="Assign an agent" />
-                                                        </SelectTrigger>
-                                                        <SelectContent>
-                                                            <SelectItem value="unassigned">Unassigned</SelectItem>
-                                                            {approvedAgents.map(agent => (
-                                                                <SelectItem key={agent.id} value={`${agent.id}:${agent.name}`}>{agent.name}</SelectItem>
-                                                            ))}
-                                                        </SelectContent>
-                                                    </Select>
-                                                )}
+                                                <AgentAssignmentPopover area={area} agents={approvedAgents} onAssign={handleAssignAgents} />
                                             </TableCell>
                                             <TableCell className="text-right">
                                                 <AlertDialog>
