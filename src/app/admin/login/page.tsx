@@ -5,7 +5,8 @@ import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { signInWithEmailAndPassword } from 'firebase/auth'
-import { auth } from '@/lib/firebase'
+import { doc, getDoc } from 'firebase/firestore'
+import { auth, db } from '@/lib/firebase'
 
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -19,7 +20,6 @@ const formSchema = z.object({
   password: z.string().min(1, { message: "Password is required" }),
 })
 
-// In a real app, you'd check if the logged-in user has an 'admin' role in Firestore.
 export default function AdminLoginPage() {
   const router = useRouter()
   const { toast } = useToast()
@@ -33,12 +33,26 @@ export default function AdminLoginPage() {
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
     try {
-      await signInWithEmailAndPassword(auth, values.email, values.password)
-      // Here you would typically check if the user is an admin from your database
-      toast({
-        title: "Admin logged in successfully!",
-      })
-      router.push('/admin/dashboard')
+      const userCredential = await signInWithEmailAndPassword(auth, values.email, values.password)
+      const user = userCredential.user
+
+      // Check if the user has an 'admin' role in Firestore
+      const userDocRef = doc(db, "users", user.uid);
+      const userDocSnap = await getDoc(userDocRef);
+
+      if (userDocSnap.exists() && userDocSnap.data().role === 'admin') {
+        toast({
+          title: "Admin logged in successfully!",
+        })
+        router.push('/admin/dashboard')
+      } else {
+        await auth.signOut(); // Sign out non-admin users
+        toast({
+          variant: "destructive",
+          title: "Access Denied",
+          description: "You do not have permission to access the admin panel.",
+        })
+      }
     } catch (error: any)
 {
       console.error("Admin login error:", error)
