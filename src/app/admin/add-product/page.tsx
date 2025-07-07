@@ -1,13 +1,13 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import Image from 'next/image'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { supabase } from '@/lib/supabase'
+import { addProduct } from './actions'
 
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -26,7 +26,6 @@ const formSchema = z.object({
   image: z.any().refine((files) => files?.length == 1, "Image is required."),
 })
 
-// Define a type for the product from Supabase
 type Product = {
   id: string
   file_name: string
@@ -36,7 +35,6 @@ type Product = {
 }
 
 export default function AddProductPage() {
-  const router = useRouter()
   const { toast } = useToast()
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [products, setProducts] = useState<Product[]>([])
@@ -52,7 +50,6 @@ export default function AddProductPage() {
     },
   })
 
-  // Fetch products from Supabase
   const fetchProducts = async () => {
     const { data, error } = await supabase.from('products').select('*').order('created_at', { ascending: false });
     if (error) {
@@ -73,56 +70,33 @@ export default function AddProductPage() {
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
     setIsSubmitting(true)
-    try {
-      const imageFile = values.image[0];
-      const filePath = `products/${Date.now()}_${imageFile.name}`;
+    
+    const formData = new FormData()
+    formData.append('file_name', values.file_name)
+    formData.append('description', values.description)
+    formData.append('price_weekly', values.price_weekly.toString())
+    formData.append('price_monthly', values.price_monthly.toString())
+    formData.append('image', values.image[0])
 
-      // 1. Upload image to Supabase Storage
-      const { error: uploadError } = await supabase.storage
-        .from('products')
-        .upload(filePath, imageFile);
+    const result = await addProduct(formData)
 
-      if (uploadError) {
-        throw uploadError;
-      }
+    setIsSubmitting(false)
 
-      // 2. Get the public URL of the uploaded image
-      const { data: urlData } = supabase.storage
-        .from('products')
-        .getPublicUrl(filePath);
-      
-      const imageUrl = urlData.publicUrl;
-
-      // 3. Insert product data into Supabase table
-      const { error: insertError } = await supabase.from('products').insert({
-        file_name: values.file_name,
-        description: values.description,
-        price_weekly: values.price_weekly,
-        price_monthly: values.price_monthly,
-        file_url: imageUrl,
-      });
-
-      if (insertError) {
-        throw insertError;
-      }
-
-      toast({
+    if (result.error) {
+       toast({
+        variant: "destructive",
+        title: "Uh oh! Something went wrong.",
+        description: result.error,
+      })
+    } else {
+       toast({
         title: "Package added successfully!",
         description: "The new package is now available for customers.",
       })
       form.reset();
       setImagePreview(null);
-      await fetchProducts(); // Refresh the product list
-      
-    } catch (error: any) {
-      console.error("Error adding product:", error)
-      toast({
-        variant: "destructive",
-        title: "Uh oh! Something went wrong.",
-        description: "There was a problem adding the new package. Please check your Supabase table's Row Level Security policies and ensure INSERT operations are allowed for authenticated users.",
-      })
-    } finally {
-      setIsSubmitting(false)
+      // Manually trigger a refresh of the products list
+      await fetchProducts(); 
     }
   }
 
