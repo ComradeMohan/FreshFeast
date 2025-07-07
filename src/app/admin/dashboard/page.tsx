@@ -23,6 +23,8 @@ const statusVariant: { [key: string]: "default" | "secondary" | "destructive" | 
 type Order = {
     id: string;
     userName: string;
+    userEmail: string;
+    userPhone: string;
     status: string;
     total: number;
     createdAt: any;
@@ -115,6 +117,7 @@ export default function AdminDashboard() {
                       <TableRow>
                           <TableHead>Order ID</TableHead>
                           <TableHead>Customer</TableHead>
+                          <TableHead>Contact</TableHead>
                           <TableHead>Status</TableHead>
                           <TableHead className="text-right">Total</TableHead>
                       </TableRow>
@@ -125,6 +128,7 @@ export default function AdminDashboard() {
                            <TableRow key={i}>
                                 <TableCell><Skeleton className="h-5 w-24" /></TableCell>
                                 <TableCell><Skeleton className="h-5 w-32" /></TableCell>
+                                <TableCell><Skeleton className="h-10 w-40" /></TableCell>
                                 <TableCell><Skeleton className="h-6 w-20" /></TableCell>
                                 <TableCell className="text-right"><Skeleton className="h-5 w-16 ml-auto" /></TableCell>
                            </TableRow>
@@ -135,6 +139,10 @@ export default function AdminDashboard() {
                                 <TableCell className="font-mono">#{order.id.slice(0, 8)}...</TableCell>
                                 <TableCell>{order.userName}</TableCell>
                                 <TableCell>
+                                    <div>{order.userEmail}</div>
+                                    <div className="text-sm text-muted-foreground">{order.userPhone}</div>
+                                </TableCell>
+                                <TableCell>
                                     <Badge variant={statusVariant[order.status] || 'secondary'}>{order.status}</Badge>
                                 </TableCell>
                                 <TableCell className="text-right">₹{order.total.toFixed(2)}</TableCell>
@@ -142,7 +150,7 @@ export default function AdminDashboard() {
                         ))
                       ) : (
                         <TableRow>
-                            <TableCell colSpan={4} className="text-center text-muted-foreground">No recent orders.</TableCell>
+                            <TableCell colSpan={5} className="text-center text-muted-foreground">No recent orders.</TableCell>
                         </TableRow>
                       )}
                   </TableBody>

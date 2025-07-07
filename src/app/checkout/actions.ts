@@ -43,7 +43,17 @@ export async function createOrder(userId: string, deliveryInfo: any) {
 
         const userDocRef = doc(db, 'users', userId);
         const userDocSnap = await getDoc(userDocRef);
-        const userName = userDocSnap.exists() ? `${userDocSnap.data().firstName} ${userDocSnap.data().lastName}` : 'Guest User';
+        
+        let userName = 'Guest User';
+        let userEmail = '';
+        let userPhone = '';
+
+        if (userDocSnap.exists()) {
+            const userData = userDocSnap.data();
+            userName = `${userData.firstName} ${userData.lastName}`;
+            userEmail = userData.email;
+            userPhone = userData.phone;
+        }
 
         const cartItems = cartSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }))
         const subtotal = cartItems.reduce((acc, item: any) => acc + item.price * item.quantity, 0)
@@ -53,6 +63,8 @@ export async function createOrder(userId: string, deliveryInfo: any) {
         const orderData = {
             userId,
             userName,
+            userEmail,
+            userPhone,
             deliveryInfo,
             items: cartItems,
             subtotal,
