@@ -1,3 +1,4 @@
+
 'use server'
 
 import { db } from '@/lib/firebase'
@@ -51,14 +52,20 @@ export async function getAssignedOrders(agentId: string): Promise<AssignedOrder[
         });
 
         // Filter for active orders and sort them in code.
-        const activeOrders = allAgentOrders
+        const activeOrdersWithTimestamp = allAgentOrders
             .filter(order => order.status === 'Pending' || order.status === 'Out for Delivery')
             .sort((a, b) => {
                 if (!a.createdAtTimestamp || !b.createdAtTimestamp) return 0;
                 return b.createdAtTimestamp.toMillis() - a.createdAtTimestamp.toMillis();
             });
+            
+        // Remove the non-serializable timestamp object before returning to the client
+        const finalOrders = activeOrdersWithTimestamp.map(order => {
+            const { createdAtTimestamp, ...rest } = order;
+            return rest;
+        })
 
-        return activeOrders as AssignedOrder[];
+        return finalOrders as AssignedOrder[];
     } catch (error) {
         console.error("Error fetching assigned orders:", error);
         return [];
