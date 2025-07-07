@@ -7,7 +7,7 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { db } from '@/lib/firebase'
 import { collection, onSnapshot, orderBy, query } from 'firebase/firestore'
-import { addArea, deleteArea } from './actions'
+import { addArea, deleteArea, getApprovedAgents, assignAgentToArea } from './actions'
 
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -17,6 +17,7 @@ import { useToast } from '@/hooks/use-toast'
 import { ArrowLeft, LoaderCircle, Trash2, MapPin } from 'lucide-react'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 
 const formSchema = z.object({
   name: z.string().min(1, { message: "Area name is required" }),
@@ -29,13 +30,22 @@ type Area = {
   name: string
   pincode: string
   state: string
+  assignedAgentId?: string | null
+  assignedAgentName?: string | null
+}
+
+type Agent = {
+    id: string;
+    name: string;
 }
 
 export default function ManageAreasPage() {
   const { toast } = useToast()
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [areas, setAreas] = useState<Area[]>([])
+  const [approvedAgents, setApprovedAgents] = useState<Agent[]>([])
   const [loading, setLoading] = useState(true)
+  const [assigning, setAssigning] = useState<string | null>(null);
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -43,6 +53,12 @@ export default function ManageAreasPage() {
   })
 
   useEffect(() => {
+    const fetchAgents = async () => {
+        const agents = await getApprovedAgents();
+        setApprovedAgents(agents);
+    }
+    fetchAgents();
+
     const q = query(collection(db, 'serviceableAreas'), orderBy('createdAt', 'desc'))
     const unsubscribe = onSnapshot(q, (querySnapshot) => {
       const areasData = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Area))
@@ -78,6 +94,18 @@ export default function ManageAreasPage() {
       }
   }
 
+  async function handleAssignAgent(areaId: string, value: string) {
+    setAssigning(areaId);
+    const [agentId, agentName] = value.split(':');
+    const result = await assignAgentToArea(areaId, agentId === 'unassigned' ? null : agentId, agentName || null);
+    if (result.success) {
+        toast({ title: 'Agent Assigned', description: `Agent has been ${agentId === 'unassigned' ? 'unassigned' : 'assigned to the area'}.` })
+    } else {
+        toast({ variant: 'destructive', title: 'Assignment Failed', description: result.error })
+    }
+    setAssigning(null);
+  }
+
   return (
      <div className="container mx-auto px-4 py-12 md:py-16">
       <div className="flex items-center mb-8 gap-4">
@@ -88,7 +116,7 @@ export default function ManageAreasPage() {
         </Button>
         <div>
           <h1 className="text-3xl font-headline font-bold tracking-tighter sm:text-4xl">Manage Serviceable Areas</h1>
-          <p className="text-muted-foreground mt-1">Add or remove areas where you deliver.</p>
+          <p className="text-muted-foreground mt-1">Add or remove areas where you deliver and assign agents.</p>
         </div>
       </div>
        <div className="grid gap-8 md:grid-cols-3">
@@ -132,18 +160,39 @@ export default function ManageAreasPage() {
                             <Table>
                                 <TableHeader>
                                     <TableRow>
-                                        <TableHead>Area Name</TableHead>
-                                        <TableHead>State</TableHead>
-                                        <TableHead>Pincode</TableHead>
+                                        <TableHead>Area</TableHead>
+                                        <TableHead>Assigned Agent</TableHead>
                                         <TableHead className="text-right">Actions</TableHead>
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>
                                     {areas.length > 0 ? areas.map(area => (
                                         <TableRow key={area.id}>
-                                            <TableCell>{area.name}</TableCell>
-                                            <TableCell>{area.state}</TableCell>
-                                            <TableCell>{area.pincode}</TableCell>
+                                            <TableCell>
+                                                <div className="font-medium">{area.name}</div>
+                                                <div className="text-sm text-muted-foreground">{area.state}, {area.pincode}</div>
+                                            </TableCell>
+                                            <TableCell>
+                                                {assigning === area.id ? (
+                                                     <LoaderCircle className="animate-spin h-5 w-5" />
+                                                ) : (
+                                                    <Select
+                                                        defaultValue={area.assignedAgentId ? `${area.assignedAgentId}:${area.assignedAgentName}` : 'unassigned'}
+                                                        onValueChange={(value) => handleAssignAgent(area.id, value)}
+                                                        disabled={assigning === area.id}
+                                                    >
+                                                        <SelectTrigger className="w-[200px]">
+                                                            <SelectValue placeholder="Assign an agent" />
+                                                        </SelectTrigger>
+                                                        <SelectContent>
+                                                            <SelectItem value="unassigned">Unassigned</SelectItem>
+                                                            {approvedAgents.map(agent => (
+                                                                <SelectItem key={agent.id} value={`${agent.id}:${agent.name}`}>{agent.name}</SelectItem>
+                                                            ))}
+                                                        </SelectContent>
+                                                    </Select>
+                                                )}
+                                            </TableCell>
                                             <TableCell className="text-right">
                                                 <AlertDialog>
                                                     <AlertDialogTrigger asChild>
@@ -156,7 +205,7 @@ export default function ManageAreasPage() {
                                                             <AlertDialogTitle>Are you sure?</AlertDialogTitle>
                                                             <AlertDialogDescription>
                                                                 This will permanently delete this area. This action cannot be undone.
-                                                            </AlertDialogDescription>
+                                                            </DAlertDialogDescription>
                                                         </AlertDialogHeader>
                                                         <AlertDialogFooter>
                                                             <AlertDialogCancel>Cancel</AlertDialogCancel>
