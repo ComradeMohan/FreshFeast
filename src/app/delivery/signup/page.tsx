@@ -65,7 +65,7 @@ export default function DeliverySignupPage() {
     try {
       // 1. Upload image to Supabase Storage
       const imageFile = values.image[0] as File
-      const filePath = `public/${Date.now()}_${imageFile.name}`
+      const filePath = `${Date.now()}_${imageFile.name}`
       const { error: uploadError } = await supabase.storage
         .from('agent-photos')
         .upload(filePath, imageFile)

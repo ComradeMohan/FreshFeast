@@ -51,7 +51,7 @@ export async function rejectAgent(agentId: string) {
 
     // 2. Delete photo from Supabase Storage
     if (photoUrl) {
-      const filePath = photoUrl.substring(photoUrl.indexOf('/public/') + 1)
+      const filePath = photoUrl.split('/agent-photos/')[1]
       if (filePath) {
         const { error: deleteError } = await supabaseAdmin.storage
           .from('agent-photos')
