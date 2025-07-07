@@ -3,18 +3,147 @@
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet'
-import { Menu, ShoppingCart } from 'lucide-react'
+import { Menu, ShoppingCart, Bell, LogOut } from 'lucide-react'
 import { Logo } from '@/components/Logo'
 import { useIsMobile } from '@/hooks/use-mobile'
+import { useAuthState } from 'react-firebase-hooks/auth'
+import { auth, requestNotificationPermission, signOut } from '@/lib/firebase'
+import { useToast } from '@/hooks/use-toast'
+import React, { useState, useEffect } from 'react'
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
+import { useRouter } from 'next/navigation'
 
 const navLinks = [
   { href: '/', label: 'Home' },
-  { href: '#products', label: 'All Fruit Boxes' },
+  { href: '/#products', label: 'All Fruit Boxes' },
   { href: '/careers', label: 'Careers' },
 ]
 
 export function Header() {
   const isMobile = useIsMobile()
+  const router = useRouter()
+  const [user, loading] = useAuthState(auth)
+  const { toast } = useToast()
+  const [showNotificationButton, setShowNotificationButton] = useState(false)
+  const [isSheetOpen, setIsSheetOpen] = useState(false)
+
+  useEffect(() => {
+    if (user && typeof window !== 'undefined' && 'Notification' in window) {
+      if (Notification.permission === 'default') {
+        setShowNotificationButton(true)
+      } else {
+        setShowNotificationButton(false)
+      }
+    } else {
+      setShowNotificationButton(false)
+    }
+  }, [user])
+
+  const handleEnableNotifications = async () => {
+    if (!user) return
+    const token = await requestNotificationPermission(user.uid)
+    if (token) {
+      toast({
+        title: 'Notifications Enabled!',
+        description: "You'll now receive order updates.",
+      })
+      setShowNotificationButton(false)
+    } else {
+      toast({
+        variant: 'destructive',
+        title: 'Notifications Blocked',
+        description: 'Please enable notifications in your browser settings.',
+      })
+      setShowNotificationButton(false)
+    }
+  }
+  
+  const handleLogout = async () => {
+    await signOut(auth)
+    toast({
+      title: 'Logged out',
+      description: 'You have been successfully logged out.',
+    })
+    setIsSheetOpen(false) 
+    router.push('/')
+  }
+
+  const renderAuthButtons = (isMobileView: boolean) => {
+    if (loading) {
+      return null
+    }
+    
+    if (user) {
+      return (
+        <>
+          {showNotificationButton && (
+            isMobileView ? (
+              <Button onClick={handleEnableNotifications} variant="outline" className="w-full">
+                <Bell className="mr-2 h-4 w-4" /> Enable Notifications
+              </Button>
+            ) : (
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button variant="ghost" size="icon" onClick={handleEnableNotifications}>
+                      <Bell className="h-5 w-5 text-muted-foreground" />
+                      <span className="sr-only">Enable Notifications</span>
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <p>Enable Notifications</p>
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+            )
+          )}
+          {isMobileView ? (
+             <Button onClick={handleLogout} variant="destructive" className="w-full">
+                <LogOut className="mr-2 h-4 w-4" /> Logout
+            </Button>
+          ) : (
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button variant="ghost" size="icon" onClick={handleLogout}>
+                    <LogOut className="h-5 w-5 text-muted-foreground" />
+                    <span className="sr-only">Logout</span>
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p>Logout</p>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+          )}
+        </>
+      )
+    }
+
+    return (
+      <>
+        {isMobileView ? (
+          <>
+            <Button asChild onClick={() => setIsSheetOpen(false)}>
+              <Link href="/login">Login</Link>
+            </Button>
+            <Button asChild variant="outline" onClick={() => setIsSheetOpen(false)}>
+              <Link href="/signup">Sign Up</Link>
+            </Button>
+          </>
+        ) : (
+          <>
+            <Button variant="ghost" asChild>
+              <Link href="/login">Login</Link>
+            </Button>
+            <Button asChild className="bg-primary hover:bg-primary/90">
+              <Link href="/signup">Sign Up</Link>
+            </Button>
+          </>
+        )}
+      </>
+    )
+  }
 
   return (
     <header className="sticky top-0 z-50 w-full border-b border-border/40 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
@@ -28,7 +157,7 @@ export function Header() {
         
         {isMobile ? (
           <div className="flex-1 flex justify-end">
-            <Sheet>
+            <Sheet open={isSheetOpen} onOpenChange={setIsSheetOpen}>
               <SheetTrigger asChild>
                 <Button variant="ghost" size="icon">
                   <Menu className="h-6 w-6" />
@@ -42,18 +171,14 @@ export function Header() {
                       key={href}
                       href={href}
                       className="text-muted-foreground transition-colors hover:text-foreground"
+                      onClick={() => setIsSheetOpen(false)}
                     >
                       {label}
                     </Link>
                   ))}
                 </nav>
                 <div className="absolute bottom-6 left-6 right-6 flex flex-col gap-2">
-                  <Button asChild>
-                    <Link href="/login">Login</Link>
-                  </Button>
-                  <Button asChild variant="outline">
-                    <Link href="/signup">Sign Up</Link>
-                  </Button>
+                  {renderAuthButtons(true)}
                 </div>
               </SheetContent>
             </Sheet>
@@ -78,12 +203,7 @@ export function Header() {
                   <span className="sr-only">Shopping Cart</span>
                 </Link>
               </Button>
-              <Button variant="ghost" asChild>
-                <Link href="/login">Login</Link>
-              </Button>
-              <Button asChild className="bg-primary hover:bg-primary/90">
-                <Link href="/signup">Sign Up</Link>
-              </Button>
+              {renderAuthButtons(false)}
             </div>
           </>
         )}
