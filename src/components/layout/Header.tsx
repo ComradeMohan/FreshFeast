@@ -50,14 +50,12 @@ export function Header() {
   const loggedInNavLinks = [
       { href: '/orders', label: 'My Orders' },
       { href: '/#packages', label: 'Our Packages' },
-      { href: '/careers', label: 'Careers' },
   ];
 
   const adminNavLinks = [
       { href: '/admin/dashboard', label: 'Dashboard' },
       { href: '/orders', label: 'My Orders' },
       { href: '/#packages', label: 'Our Packages' },
-      { href: '/careers', label: 'Careers' },
   ];
   
   const loggedOutNavLinks = [
