@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { ProductCard } from '@/components/ProductCard'
-import { ArrowRight, LoaderCircle } from 'lucide-react'
+import { ArrowRight, LoaderCircle, Truck } from 'lucide-react'
 import { useAuthState } from 'react-firebase-hooks/auth'
 import { auth } from '@/lib/firebase'
 import { supabase } from '@/lib/supabase'
@@ -72,6 +72,10 @@ export default function Home() {
               <p className="mt-4 text-muted-foreground md:text-xl">
                 Experience the taste of nature with our curated fruit boxes. Hand-picked, fresh, and delivered right to your doorstep.
               </p>
+              <div className="mt-6 inline-flex items-center rounded-lg border border-dashed border-primary/50 bg-background px-4 py-2 text-base font-medium text-primary shadow-sm">
+                <Truck className="mr-3 h-5 w-5" />
+                <span>Free Delivery: 6 AM - 9 AM</span>
+              </div>
               <Button asChild size="lg" className="mt-6 bg-accent hover:bg-accent/90 text-accent-foreground">
                 <Link href="#packages">
                   Shop Now <ArrowRight className="ml-2 h-5 w-5" />

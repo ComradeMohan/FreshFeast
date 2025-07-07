@@ -219,9 +219,7 @@ export default function CheckoutPage() {
                                     <SelectTrigger><SelectValue placeholder="Select a delivery window" /></SelectTrigger>
                                 </FormControl>
                                 <SelectContent>
-                                    <SelectItem value="morning">Morning (8am - 12pm)</SelectItem>
-                                    <SelectItem value="afternoon">Afternoon (12pm - 4pm)</SelectItem>
-                                    <SelectItem value="evening">Evening (4pm - 8pm)</SelectItem>
+                                    <SelectItem value="morning-6-9">Morning (6am - 9am)</SelectItem>
                                 </SelectContent>
                             </Select>
                             <FormMessage />
