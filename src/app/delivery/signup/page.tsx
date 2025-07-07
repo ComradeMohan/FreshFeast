@@ -87,7 +87,6 @@ export default function DeliverySignupPage() {
 
       // 4. Store additional user data in Firestore
       await setDoc(doc(db, "deliveryAgents", user.uid), {
-        uid: user.uid,
         firstName: values.firstName,
         lastName: values.lastName,
         email: values.email,

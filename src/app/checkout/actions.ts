@@ -2,7 +2,7 @@
 'use server'
 
 import { db } from '@/lib/firebase'
-import { collection, getDocs, writeBatch, addDoc, serverTimestamp, doc, getDoc, query, where, limit, increment, updateDoc } from 'firebase/firestore'
+import { collection, getDocs, writeBatch, addDoc, serverTimestamp, doc, getDoc, query, where, limit, increment, updateDoc, documentId } from 'firebase/firestore'
 import { redirect } from 'next/navigation'
 import QRCode from 'qrcode'
 import { z } from 'zod'
@@ -62,22 +62,26 @@ async function findAvailableAgentForArea(city: string): Promise<any | null> {
         return null; // No agents assigned to this area
     }
 
-    // Firestore 'in' queries are limited to 30 values. This should be sufficient for now.
+    // A more robust query using the document ID. We fetch all assigned agents 
+    // and then filter by status and capacity client-side.
+    // This is less prone to complex index requirements.
     const agentsQuery = query(
         collection(db, 'deliveryAgents'), 
-        where('uid', 'in', assignedAgentIds),
-        where('status', '==', 'approved')
+        where(documentId(), 'in', assignedAgentIds)
     );
     const agentsSnapshot = await getDocs(agentsQuery);
 
     if (agentsSnapshot.empty) {
-        return null; // No approved agents found from the assigned list
+        return null; // No agents found for the given IDs
     }
 
-    const agentsData = agentsSnapshot.docs.map(d => d.data());
+    const agentsData = agentsSnapshot.docs.map(doc => ({ uid: doc.id, ...doc.data() }));
     
-    // Filter by capacity client-side (after fetching)
-    const eligibleAgents = agentsData.filter(agent => agent.activeOrderCount < agent.maxDeliveries);
+    // Filter by status and capacity client-side
+    const eligibleAgents = agentsData.filter((agent:any) => 
+        agent.status === 'approved' && 
+        agent.activeOrderCount < agent.maxDeliveries
+    );
 
     if (eligibleAgents.length > 0) {
         // Sort by who has the fewest active orders to balance the load
@@ -85,7 +89,7 @@ async function findAvailableAgentForArea(city: string): Promise<any | null> {
         return eligibleAgents[0]; // Return the agent with the least work
     }
 
-    return null; // All assigned agents are at capacity
+    return null; // All assigned agents are at capacity or not approved
 }
 
 export async function createOrder(userId: string, deliveryInfo: any) {
