@@ -5,7 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { Users, Package, DollarSign, PlusCircle, UserCheck, MapPin } from 'lucide-react';
+import { Users, Package, DollarSign, PlusCircle, UserCheck, MapPin, Truck } from 'lucide-react';
 import Link from 'next/link';
 import { useEffect, useState } from "react";
 import { getShippingCharge } from "@/lib/settings";
@@ -34,6 +34,7 @@ type Order = {
     deliveryInfo: {
         city: string;
     };
+    assignedAgentName?: string;
 }
 
 export default function AdminDashboard() {
@@ -252,7 +253,16 @@ export default function AdminDashboard() {
                                 </TableCell>
                                 <TableCell>{order.deliveryInfo?.city}</TableCell>
                                 <TableCell>
-                                    <Badge variant={statusVariant[order.status] || 'secondary'}>{order.status}</Badge>
+                                    {order.assignedAgentName && order.status !== 'Delivered' ? (
+                                        <Badge variant={statusVariant[order.status] || 'secondary'} className="font-normal">
+                                            <div className="flex items-center gap-1.5">
+                                                <Truck className="h-3 w-3" />
+                                                <span className="truncate">{order.assignedAgentName}</span>
+                                            </div>
+                                        </Badge>
+                                    ) : (
+                                        <Badge variant={statusVariant[order.status] || 'secondary'}>{order.status}</Badge>
+                                    )}
                                 </TableCell>
                                 <TableCell className="text-right">₹{order.total.toFixed(2)}</TableCell>
                             </TableRow>
@@ -270,3 +280,5 @@ export default function AdminDashboard() {
     </div>
   )
 }
+
+    
