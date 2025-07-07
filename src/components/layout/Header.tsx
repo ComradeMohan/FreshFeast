@@ -1,3 +1,4 @@
+
 'use client'
 
 import Link from 'next/link'
@@ -76,6 +77,7 @@ export function Header() {
   const loggedInNavLinks = [
       { href: '/profile', label: 'Profile' },
       { href: '/orders', label: 'My Orders' },
+      { href: '/delivery-schedule', label: 'Delivery Schedule' },
       { href: '/#packages', label: 'Our Packages' },
   ];
 
