@@ -1,3 +1,4 @@
+
 'use client'
 
 import { useState, useEffect } from 'react'
@@ -61,7 +62,10 @@ export default function DeliveryProfilePage() {
 
   const capacityForm = useForm<z.infer<typeof capacityFormSchema>>({
     resolver: zodResolver(capacityFormSchema),
-  })
+    defaultValues: {
+      maxDeliveries: 0,
+    },
+  });
 
   useEffect(() => {
     if (authLoading) return;
@@ -90,7 +94,7 @@ export default function DeliveryProfilePage() {
     });
     
     return () => unsubscribe();
-  }, [user, authLoading, router, toast, capacityForm])
+  }, [user, authLoading, router, toast])
 
   async function onSubmitPassword(values: z.infer<typeof passwordFormSchema>) {
     if (!user) return;
