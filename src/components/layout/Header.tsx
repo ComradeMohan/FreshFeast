@@ -32,6 +32,7 @@ export function Header() {
   const router = useRouter()
   const [user, loading] = useAuthState(auth)
   const [isAdmin, setIsAdmin] = useState(false)
+  const [isAgent, setIsAgent] = useState(false)
   const { toast } = useToast()
   const [showNotificationButton, setShowNotificationButton] = useState(false)
   const [isSheetOpen, setIsSheetOpen] = useState(false)
@@ -42,26 +43,45 @@ export function Header() {
   }, []);
 
   useEffect(() => {
-    const checkAdminStatus = async () => {
+    const checkUserRole = async () => {
       if (user) {
-        const userDocRef = doc(db, "users", user.uid);
-        const userDocSnap = await getDoc(userDocRef);
-        if (userDocSnap.exists() && userDocSnap.data().role === 'admin') {
+        // Check for Admin
+        const adminDocRef = doc(db, "users", user.uid);
+        const adminDocSnap = await getDoc(adminDocRef);
+        if (adminDocSnap.exists() && adminDocSnap.data().role === 'admin') {
           setIsAdmin(true);
-        } else {
+          setIsAgent(false);
+          return;
+        }
+
+        // Check for Agent
+        const agentDocRef = doc(db, "deliveryAgents", user.uid);
+        const agentDocSnap = await getDoc(agentDocRef);
+        if (agentDocSnap.exists()) {
+          setIsAgent(true);
           setIsAdmin(false);
+        } else {
+          // Default to customer
+          setIsAdmin(false);
+          setIsAgent(false);
         }
       } else {
         setIsAdmin(false);
+        setIsAgent(false);
       }
     };
-    checkAdminStatus();
+    checkUserRole();
   }, [user]);
 
   const loggedInNavLinks = [
       { href: '/profile', label: 'Profile' },
       { href: '/orders', label: 'My Orders' },
       { href: '/#packages', label: 'Our Packages' },
+  ];
+
+  const agentNavLinks = [
+    { href: '/delivery/dashboard', label: 'Dashboard' },
+    { href: '/delivery/profile', label: 'Profile' },
   ];
 
   const adminNavLinks = [
@@ -76,7 +96,9 @@ export function Header() {
       { href: '/careers', label: 'Careers' },
   ];
   
-  const currentNavLinks = hasMounted && user ? (isAdmin ? adminNavLinks : loggedInNavLinks) : loggedOutNavLinks;
+  const currentNavLinks = hasMounted && user 
+    ? (isAdmin ? adminNavLinks : (isAgent ? agentNavLinks : loggedInNavLinks))
+    : loggedOutNavLinks;
 
   useEffect(() => {
     if (hasMounted && user && typeof window !== 'undefined' && 'Notification' in window) {
@@ -165,7 +187,7 @@ export function Header() {
               <DropdownMenuContent className="w-56" align="end" forceMount>
                 <DropdownMenuLabel className="font-normal">
                   <div className="flex flex-col space-y-1">
-                    <p className="text-sm font-medium leading-none">My Account</p>
+                    <p className="text-sm font-medium leading-none">{isAgent ? 'Agent Account' : 'My Account'}</p>
                     <p className="text-xs leading-none text-muted-foreground">
                       {user.email}
                     </p>
@@ -174,7 +196,7 @@ export function Header() {
                 <DropdownMenuSeparator />
                 <DropdownMenuGroup>
                   <DropdownMenuItem asChild>
-                    <Link href="/profile">
+                    <Link href={isAgent ? '/delivery/profile' : '/profile'}>
                       <UserCircle className="mr-2 h-4 w-4" />
                       <span>Profile</span>
                     </Link>
@@ -245,7 +267,7 @@ export function Header() {
         
         {isMobile ? (
           <div className="flex-1 flex justify-end items-center gap-2">
-            {!isAdmin && (
+            {!isAdmin && !isAgent && (
               <Button variant="ghost" size="icon" asChild>
                 <Link href="/cart" className="relative">
                   <ShoppingCart className="h-5 w-5 text-muted-foreground" />
@@ -300,7 +322,7 @@ export function Header() {
               ))}
             </nav>
             <div className="flex items-center gap-4">
-              {!isAdmin && (
+              {!isAdmin && !isAgent && (
                 <Button variant="ghost" size="icon" asChild>
                   <Link href="/cart" className="relative">
                     <ShoppingCart className="h-5 w-5 text-muted-foreground" />
