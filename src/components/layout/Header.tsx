@@ -14,12 +14,17 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/comp
 import { useRouter } from 'next/navigation'
 
 export function Header() {
+  const [hasMounted, setHasMounted] = useState(false);
   const isMobile = useIsMobile()
   const router = useRouter()
   const [user, loading] = useAuthState(auth)
   const { toast } = useToast()
   const [showNotificationButton, setShowNotificationButton] = useState(false)
   const [isSheetOpen, setIsSheetOpen] = useState(false)
+
+  useEffect(() => {
+    setHasMounted(true);
+  }, []);
 
   const loggedInNavLinks = [
       { href: '/#packages', label: 'Our Packages' },
@@ -32,10 +37,10 @@ export function Header() {
       { href: '/careers', label: 'Careers' },
   ];
   
-  const currentNavLinks = user ? loggedInNavLinks : loggedOutNavLinks;
+  const currentNavLinks = hasMounted && user ? loggedInNavLinks : loggedOutNavLinks;
 
   useEffect(() => {
-    if (user && typeof window !== 'undefined' && 'Notification' in window) {
+    if (hasMounted && user && typeof window !== 'undefined' && 'Notification' in window) {
       if (Notification.permission === 'default') {
         setShowNotificationButton(true)
       } else {
@@ -44,7 +49,7 @@ export function Header() {
     } else {
       setShowNotificationButton(false)
     }
-  }, [user])
+  }, [user, hasMounted])
 
   const handleEnableNotifications = async () => {
     if (!user) return
@@ -150,6 +155,22 @@ export function Header() {
         )}
       </>
     )
+  }
+
+  if (!hasMounted) {
+    return (
+      <header className="sticky top-0 z-50 w-full border-b border-border/40 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+        <div className="container flex h-16 items-center">
+          <Link href="/" className="mr-6 flex items-center space-x-2">
+            <Logo className="h-8 w-8 text-primary" />
+            <span className="font-bold font-headline sm:inline-block">
+              Fresh Feast Hub
+            </span>
+          </Link>
+          <div className="flex-1" />
+        </div>
+      </header>
+    );
   }
 
   return (
