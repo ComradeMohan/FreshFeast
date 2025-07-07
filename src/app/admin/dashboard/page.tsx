@@ -11,7 +11,7 @@ import { getShippingCharge } from "@/lib/settings";
 import { ShippingSettingsForm } from "@/components/admin/ShippingSettingsForm";
 import { Skeleton } from "@/components/ui/skeleton";
 import { db } from "@/lib/firebase";
-import { collection, onSnapshot, query, orderBy, limit } from "firebase/firestore";
+import { collection, onSnapshot, query, orderBy, limit, where } from "firebase/firestore";
 
 const statusVariant: { [key: string]: "default" | "secondary" | "destructive" | "outline" } = {
   'Pending': 'secondary',
@@ -35,27 +35,67 @@ export default function AdminDashboard() {
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
 
+  // Stats states
+  const [totalRevenue, setTotalRevenue] = useState<number | string>('...');
+  const [activeOrdersCount, setActiveOrdersCount] = useState<number | string>('...');
+  const [deliveryAgentsCount, setDeliveryAgentsCount] = useState<number | string>('...');
+
+
   useEffect(() => {
     getShippingCharge().then(setShippingCharge);
 
+    // Recent Orders
     const q = query(collection(db, "orders"), orderBy("createdAt", "desc"), limit(5));
-    const unsubscribe = onSnapshot(q, (querySnapshot) => {
+    const unsubscribeRecent = onSnapshot(q, (querySnapshot) => {
       const ordersData = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Order));
       setOrders(ordersData);
-      setLoading(false);
+      setLoading(false); // Set loading to false after first fetch
     }, (error) => {
       console.error("Error fetching recent orders:", error);
       setLoading(false);
     });
 
-    return () => unsubscribe();
+    // Active Orders Count
+    const activeOrdersQuery = query(collection(db, "orders"), where("status", "in", ["Pending", "Out for Delivery"]));
+    const unsubscribeActive = onSnapshot(activeOrdersQuery, (snapshot) => {
+        setActiveOrdersCount(snapshot.size);
+    }, (error) => {
+        console.error("Error fetching active orders count:", error);
+        setActiveOrdersCount(0);
+    });
+    
+    // Total Revenue
+    const deliveredOrdersQuery = query(collection(db, "orders"), where("status", "==", "Delivered"));
+    const unsubscribeRevenue = onSnapshot(deliveredOrdersQuery, (snapshot) => {
+        const revenue = snapshot.docs.reduce((acc, doc) => acc + doc.data().total, 0);
+        setTotalRevenue(`₹${revenue.toFixed(2)}`);
+    }, (error) => {
+        console.error("Error fetching total revenue:", error);
+        setTotalRevenue('₹0.00');
+    });
+
+    // Delivery Agents Count
+    const agentsQuery = query(collection(db, "deliveryAgents"));
+    const unsubscribeAgents = onSnapshot(agentsQuery, (snapshot) => {
+        setDeliveryAgentsCount(snapshot.size);
+    }, (error) => {
+        console.error("Error fetching delivery agents count:", error);
+        setDeliveryAgentsCount(0);
+    });
+
+
+    return () => {
+      unsubscribeRecent();
+      unsubscribeActive();
+      unsubscribeRevenue();
+      unsubscribeAgents();
+    }
   }, []);
 
-  // Placeholder stats data, can be wired up to real data in a future step
   const stats = [
-    { title: 'Total Revenue', value: '...', icon: DollarSign },
-    { title: 'Active Orders', value: '...', icon: Package },
-    { title: 'Delivery Agents', value: '...', icon: Users },
+    { title: 'Total Revenue', value: totalRevenue, icon: DollarSign },
+    { title: 'Active Orders', value: activeOrdersCount, icon: Package },
+    { title: 'Delivery Agents', value: deliveryAgentsCount, icon: Users },
   ]
 
   return (
