@@ -63,7 +63,7 @@ export function ProductCard({ packageItem }: ProductCardProps) {
       <CardFooter className="p-4 flex-col items-start gap-3">
         <div className="w-full flex justify-between items-center">
             <div>
-                <p className="text-xs text-muted-foreground">Weekly</p>
+                <p className="text-xs text-muted-foreground">Weekly Plan (5 deliveries)</p>
                 <p className="text-lg font-bold text-primary">₹{packageItem.price_weekly.toLocaleString()}</p>
             </div>
             <Button onClick={() => handleAddToCart('weekly')} size="sm" className="bg-accent hover:bg-accent/90 text-accent-foreground">
@@ -73,7 +73,7 @@ export function ProductCard({ packageItem }: ProductCardProps) {
         </div>
          <div className="w-full flex justify-between items-center">
             <div>
-                <p className="text-xs text-muted-foreground">Monthly</p>
+                <p className="text-xs text-muted-foreground">Monthly Plan (~22 deliveries)</p>
                 <p className="text-lg font-bold text-primary">₹{packageItem.price_monthly.toLocaleString()}</p>
             </div>
             <Button onClick={() => handleAddToCart('monthly')} size="sm" className="bg-accent hover:bg-accent/90 text-accent-foreground">

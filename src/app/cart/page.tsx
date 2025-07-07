@@ -112,7 +112,7 @@ export default function CartPage() {
                       </TableCell>
                       <TableCell>
                         <p className="font-medium">{item.name}</p>
-                        <p className="text-sm text-muted-foreground capitalize">{item.plan}</p>
+                        <p className="text-sm text-muted-foreground">{item.plan === 'weekly' ? 'Weekly Plan (5 deliveries)' : 'Monthly Plan (~22 deliveries)'}</p>
                       </TableCell>
                       <TableCell>
                         <div className="flex items-center justify-center gap-2">

@@ -267,7 +267,7 @@ export default function CheckoutPage() {
                 <CardContent className="grid gap-4">
                     {cartItems.map((item) => (
                        <div className="flex justify-between text-muted-foreground" key={item.id}>
-                            <span className="max-w-[70%] truncate">{item.name} ({item.plan}) (x{item.quantity})</span>
+                            <span className="max-w-[70%] truncate">{item.name} ({item.plan === 'weekly' ? 'Weekly Plan' : 'Monthly Plan'}) (x{item.quantity})</span>
                             <span>₹{(item.price * item.quantity).toFixed(2)}</span>
                         </div>
                     ))}
