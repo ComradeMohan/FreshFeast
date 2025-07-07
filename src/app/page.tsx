@@ -12,18 +12,22 @@ import { cn } from '@/lib/utils'
 
 type Package = {
   id: string
-  name: string
+  file_name: string
   description: string
   price_weekly: number
   price_monthly: number
-  image_url: string
-  hint: string
+  file_url: string
 }
 
 export default function Home() {
   const [user, authLoading] = useAuthState(auth)
   const [packages, setPackages] = useState<Package[]>([])
   const [packagesLoading, setPackagesLoading] = useState(true)
+  const [hasMounted, setHasMounted] = useState(false);
+
+  useEffect(() => {
+    setHasMounted(true);
+  }, []);
 
   useEffect(() => {
     const fetchPackages = async () => {
@@ -48,7 +52,7 @@ export default function Home() {
     fetchPackages()
   }, [])
 
-  if (authLoading || packagesLoading) {
+  if (!hasMounted || authLoading || packagesLoading) {
     return (
       <div className="w-full py-12 md:py-24 lg:py-32 container flex justify-center items-center min-h-[calc(100vh-16rem)]">
         <LoaderCircle className="h-12 w-12 animate-spin text-primary" />

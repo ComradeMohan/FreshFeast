@@ -15,12 +15,11 @@ import { useCartBubble } from '@/hooks/use-cart-bubble'
 
 type Package = {
   id: string
-  name: string
+  file_name: string
   description: string
   price_weekly: number
   price_monthly: number
-  image_url: string
-  hint: string
+  file_url: string
 }
 
 type ProductCardProps = {
@@ -39,16 +38,16 @@ export function ProductCard({ packageItem }: ProductCardProps) {
       <CardHeader className="p-0">
         <div className="aspect-video relative">
           <Image
-            src={packageItem.image_url}
-            alt={packageItem.name}
+            src={packageItem.file_url}
+            alt={packageItem.file_name}
             fill
             className="object-cover"
-            data-ai-hint={packageItem.hint}
+            data-ai-hint={packageItem.file_name.split(' ')[0]}
           />
         </div>
       </CardHeader>
       <CardContent className="p-4 flex-grow">
-        <CardTitle className="text-lg font-headline">{packageItem.name}</CardTitle>
+        <CardTitle className="text-lg font-headline">{packageItem.file_name}</CardTitle>
         <CardDescription className="mt-2 text-sm">{packageItem.description}</CardDescription>
       </CardContent>
       <CardFooter className="p-4 flex-col items-start gap-3">

@@ -19,7 +19,7 @@ import { ArrowLeft, LoaderCircle } from 'lucide-react'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 
 const formSchema = z.object({
-  name: z.string().min(1, { message: "Package name is required" }),
+  file_name: z.string().min(1, { message: "Package name is required" }),
   description: z.string().min(1, { message: "Description is required" }),
   price_weekly: z.coerce.number().positive({ message: "Weekly price must be a positive number" }),
   price_monthly: z.coerce.number().positive({ message: "Monthly price must be a positive number" }),
@@ -29,8 +29,8 @@ const formSchema = z.object({
 // Define a type for the product from Supabase
 type Product = {
   id: string
-  name: string
-  image_url: string
+  file_name: string
+  file_url: string
   price_weekly: number
   price_monthly: number
 }
@@ -45,7 +45,7 @@ export default function AddProductPage() {
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      name: "",
+      file_name: "",
       description: "",
       price_weekly: 0,
       price_monthly: 0,
@@ -95,12 +95,11 @@ export default function AddProductPage() {
 
       // 3. Insert product data into Supabase table
       const { error: insertError } = await supabase.from('products').insert({
-        name: values.name,
+        file_name: values.file_name,
         description: values.description,
         price_weekly: values.price_weekly,
         price_monthly: values.price_monthly,
-        image_url: imageUrl,
-        hint: 'fruit box' // default hint
+        file_url: imageUrl,
       });
 
       if (insertError) {
@@ -161,7 +160,7 @@ export default function AddProductPage() {
             <form onSubmit={form.handleSubmit(onSubmit)} className="grid gap-6">
                <FormField
                 control={form.control}
-                name="name"
+                name="file_name"
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Package Name</FormLabel>
@@ -265,11 +264,11 @@ export default function AddProductPage() {
                     {products.map(product => (
                         <TableRow key={product.id}>
                             <TableCell>
-                                <Image src={product.image_url} alt={product.name} width={64} height={64} className="rounded-md object-cover"/>
+                                <Image src={product.file_url} alt={product.file_name} width={64} height={64} className="rounded-md object-cover"/>
                             </TableCell>
-                            <TableCell>{product.name}</TableCell>
+                            <TableCell>{product.file_name}</TableCell>
                             <TableCell>
-                                <Link href={product.image_url} target="_blank" rel="noopener noreferrer" className="text-sm underline">
+                                <Link href={product.file_url} target="_blank" rel="noopener noreferrer" className="text-sm underline">
                                     View URL
                                 </Link>
                             </TableCell>
