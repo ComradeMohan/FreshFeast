@@ -5,6 +5,7 @@ import { collection, getDocs, writeBatch, addDoc, serverTimestamp } from 'fireba
 import { redirect } from 'next/navigation'
 import QRCode from 'qrcode'
 import { z } from 'zod'
+import { getShippingCharge as getChargeFromSettings } from '@/lib/settings'
 
 export async function generateQrCode(amount: number) {
   const upiId = process.env.ADMIN_UPI_ID
@@ -42,7 +43,7 @@ export async function createOrder(userId: string, deliveryInfo: any) {
 
         const cartItems = cartSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }))
         const subtotal = cartItems.reduce((acc, item: any) => acc + item.price * item.quantity, 0)
-        const shipping = cartItems.length > 0 ? 50.00 : 0;
+        const shipping = cartItems.length > 0 ? await getChargeFromSettings() : 0;
         const total = subtotal + shipping
 
         const orderData = {
@@ -71,4 +72,8 @@ export async function createOrder(userId: string, deliveryInfo: any) {
     }
 
     redirect(`/order/confirmation?orderId=${orderId}`)
+}
+
+export async function getShippingCharge() {
+    return await getChargeFromSettings();
 }

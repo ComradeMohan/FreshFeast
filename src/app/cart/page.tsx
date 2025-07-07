@@ -12,10 +12,13 @@ import { useCart } from '@/hooks/use-cart-bubble'
 import { useAuthState } from 'react-firebase-hooks/auth'
 import { auth } from '@/lib/firebase'
 import React from 'react'
+import { getShippingCharge } from './actions'
+import { Skeleton } from '@/components/ui/skeleton'
 
 export default function CartPage() {
   const [user] = useAuthState(auth)
   const { cartItems, loading, removeFromCart, updateItemQuantity } = useCart()
+  const [shipping, setShipping] = React.useState<number | null>(null);
 
   const handleQuantityChange = (itemId: string, currentQuantity: number, change: number) => {
     const newQuantity = currentQuantity + change
@@ -23,13 +26,24 @@ export default function CartPage() {
       updateItemQuantity(itemId, newQuantity)
     }
   }
+  
+  React.useEffect(() => {
+    async function fetchShippingCharge() {
+      if (cartItems.length > 0) {
+        const charge = await getShippingCharge();
+        setShipping(charge);
+      } else {
+        setShipping(0);
+      }
+    }
+    fetchShippingCharge();
+  }, [cartItems.length]);
 
   const subtotal = React.useMemo(() => {
     return cartItems.reduce((acc, item) => acc + item.price * item.quantity, 0)
   }, [cartItems])
 
-  const shipping = cartItems.length > 0 ? 50.00 : 0;
-  const total = subtotal + shipping
+  const total = shipping !== null ? subtotal + shipping : null;
 
   if (loading) {
     return (
@@ -132,12 +146,20 @@ export default function CartPage() {
                     </div>
                     <div className="flex justify-between">
                         <span>Shipping</span>
-                        <span>₹{shipping.toFixed(2)}</span>
+                        {shipping !== null ? (
+                          <span>₹{shipping.toFixed(2)}</span>
+                        ) : (
+                          <Skeleton className="h-5 w-12" />
+                        )}
                     </div>
                     <Separator />
                     <div className="flex justify-between font-bold text-lg">
                         <span>Total</span>
-                        <span>₹{total.toFixed(2)}</span>
+                        {total !== null ? (
+                          <span>₹{total.toFixed(2)}</span>
+                        ) : (
+                          <Skeleton className="h-6 w-20" />
+                        )}
                     </div>
                     <Button size="lg" className="w-full mt-4 bg-primary hover:bg-primary/90" asChild>
                         <Link href="/checkout">

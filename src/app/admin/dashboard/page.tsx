@@ -1,9 +1,15 @@
+'use client'
+
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Users, Package, DollarSign, PlusCircle } from 'lucide-react';
 import Link from 'next/link';
+import { useEffect, useState } from "react";
+import { getShippingCharge } from "@/lib/settings";
+import { ShippingSettingsForm } from "@/components/admin/ShippingSettingsForm";
+import { Skeleton } from "@/components/ui/skeleton";
 
 const stats = [
   { title: 'Total Revenue', value: '₹1,24,500', icon: DollarSign },
@@ -24,6 +30,12 @@ const statusVariant: { [key: string]: "default" | "secondary" | "destructive" | 
 };
 
 export default function AdminDashboard() {
+  const [shippingCharge, setShippingCharge] = useState<number | null>(null);
+
+  useEffect(() => {
+    getShippingCharge().then(setShippingCharge);
+  }, []);
+
   return (
     <div className="container mx-auto px-4 py-12 md:py-16">
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-8">
@@ -53,35 +65,56 @@ export default function AdminDashboard() {
         ))}
       </div>
 
-      <Card>
-        <CardHeader>
-            <CardTitle className="font-headline">Recent Orders</CardTitle>
-        </CardHeader>
-        <CardContent>
-            <Table>
-                <TableHeader>
-                    <TableRow>
-                        <TableHead>Order ID</TableHead>
-                        <TableHead>Customer</TableHead>
-                        <TableHead>Status</TableHead>
-                        <TableHead className="text-right">Total</TableHead>
-                    </TableRow>
-                </TableHeader>
-                <TableBody>
-                    {recentOrders.map(order => (
-                        <TableRow key={order.id}>
-                            <TableCell className="font-mono">{order.id}</TableCell>
-                            <TableCell>{order.customer}</TableCell>
-                            <TableCell>
-                                <Badge variant={statusVariant[order.status] || 'secondary'}>{order.status}</Badge>
-                            </TableCell>
-                            <TableCell className="text-right">{order.total}</TableCell>
-                        </TableRow>
-                    ))}
-                </TableBody>
-            </Table>
-        </CardContent>
-      </Card>
+      <div className="grid gap-8">
+        {shippingCharge !== null ? (
+          <ShippingSettingsForm initialCharge={shippingCharge} />
+        ) : (
+          <Card>
+            <CardHeader>
+              <Skeleton className="h-6 w-1/2" />
+              <Skeleton className="h-4 w-3/4" />
+            </CardHeader>
+            <CardContent>
+              <div className="flex items-end gap-4">
+                <div className="w-full">
+                  <Skeleton className="h-5 w-24 mb-2" />
+                  <Skeleton className="h-10 w-full" />
+                </div>
+                <Skeleton className="h-10 w-20" />
+              </div>
+            </CardContent>
+          </Card>
+        )}
+        <Card>
+          <CardHeader>
+              <CardTitle className="font-headline">Recent Orders</CardTitle>
+          </CardHeader>
+          <CardContent>
+              <Table>
+                  <TableHeader>
+                      <TableRow>
+                          <TableHead>Order ID</TableHead>
+                          <TableHead>Customer</TableHead>
+                          <TableHead>Status</TableHead>
+                          <TableHead className="text-right">Total</TableHead>
+                      </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                      {recentOrders.map(order => (
+                          <TableRow key={order.id}>
+                              <TableCell className="font-mono">{order.id}</TableCell>
+                              <TableCell>{order.customer}</TableCell>
+                              <TableCell>
+                                  <Badge variant={statusVariant[order.status] || 'secondary'}>{order.status}</Badge>
+                              </TableCell>
+                              <TableCell className="text-right">{order.total}</TableCell>
+                          </TableRow>
+                      ))}
+                  </TableBody>
+              </Table>
+          </CardContent>
+        </Card>
+      </div>
     </div>
   )
 }

@@ -19,7 +19,7 @@ import { useAuthState } from 'react-firebase-hooks/auth'
 import { auth } from '@/lib/firebase'
 import { useRouter } from 'next/navigation'
 import { useToast } from '@/hooks/use-toast'
-import { generateQrCode, createOrder } from './actions'
+import { generateQrCode, createOrder, getShippingCharge } from './actions'
 import { Skeleton } from '@/components/ui/skeleton'
 
 const deliveryInfoSchema = z.object({
@@ -40,6 +40,7 @@ export default function CheckoutPage() {
   const [qrCodeUrl, setQrCodeUrl] = useState<string | null>(null)
   const [qrError, setQrError] = useState<string | null>(null)
   const [qrLoading, setQrLoading] = useState(true)
+  const [shipping, setShipping] = React.useState<number | null>(null)
 
   const form = useForm<z.infer<typeof deliveryInfoSchema>>({
     resolver: zodResolver(deliveryInfoSchema),
@@ -52,8 +53,7 @@ export default function CheckoutPage() {
     return cartItems.reduce((acc, item) => acc + item.price * item.quantity, 0)
   }, [cartItems])
 
-  const shipping = cartItems.length > 0 ? 50.00 : 0;
-  const total = subtotal + shipping
+  const total = shipping !== null ? subtotal + shipping : null;
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -61,8 +61,25 @@ export default function CheckoutPage() {
     }
   }, [user, authLoading, router]);
 
+  React.useEffect(() => {
+    async function fetchShippingCharge() {
+      if (cartItems.length > 0 && !cartLoading) {
+        try {
+          const charge = await getShippingCharge();
+          setShipping(charge);
+        } catch (error) {
+          console.error("Failed to fetch shipping charge:", error);
+          setShipping(0); // Fallback to 0
+        }
+      } else if (!cartLoading) {
+        setShipping(0);
+      }
+    }
+    fetchShippingCharge();
+  }, [cartItems.length, cartLoading]);
+
   useEffect(() => {
-    if (total > 0) {
+    if (total !== null && total > 0) {
       setQrLoading(true)
       generateQrCode(total)
         .then(result => {
@@ -78,6 +95,7 @@ export default function CheckoutPage() {
         .finally(() => setQrLoading(false))
     } else if (cartItems.length === 0 && !cartLoading) {
         setQrLoading(false)
+        setShipping(0);
     }
   }, [total, toast, cartItems, cartLoading])
 
@@ -176,10 +194,10 @@ export default function CheckoutPage() {
                 <Card className="mt-8">
                     <CardHeader>
                         <CardTitle className="font-headline">Payment Details</CardTitle>
-                        <CardDescription>Scan the QR code to complete your payment for ₹{total.toFixed(2)}.</CardDescription>
+                        <CardDescription>Scan the QR code to complete your payment for ₹{total?.toFixed(2) || '...'}.</CardDescription>
                     </CardHeader>
                     <CardContent className="flex flex-col items-center justify-center gap-4">
-                        {qrLoading ? (
+                        {qrLoading || total === null ? (
                             <Skeleton className="h-[256px] w-[256px] rounded-lg" />
                         ) : qrCodeUrl ? (
                             <Image 
@@ -224,14 +242,22 @@ export default function CheckoutPage() {
                     </div>
                     <div className="flex justify-between">
                         <span>Shipping</span>
-                        <span>₹{shipping.toFixed(2)}</span>
+                        {shipping !== null ? (
+                          <span>₹{shipping.toFixed(2)}</span>
+                        ) : (
+                          <Skeleton className="h-5 w-12" />
+                        )}
                     </div>
                     <Separator />
                     <div className="flex justify-between font-bold text-lg">
                         <span>Total</span>
-                        <span>₹{total.toFixed(2)}</span>
+                        {total !== null ? (
+                           <span>₹{total.toFixed(2)}</span>
+                        ) : (
+                          <Skeleton className="h-6 w-20" />
+                        )}
                     </div>
-                    <Button type="submit" size="lg" className="w-full mt-4 bg-primary hover:bg-primary/90" disabled={form.formState.isSubmitting || !qrCodeUrl}>
+                    <Button type="submit" size="lg" className="w-full mt-4 bg-primary hover:bg-primary/90" disabled={form.formState.isSubmitting || !qrCodeUrl || total === null}>
                         {form.formState.isSubmitting ? <LoaderCircle className="animate-spin" /> : "Place Order"}
                     </Button>
                 </CardContent>
