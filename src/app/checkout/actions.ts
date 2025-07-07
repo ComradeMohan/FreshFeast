@@ -29,7 +29,7 @@ export async function generateQrCode(amount: number) {
   }
 }
 
-const calculateDeliveryDates = (plan: 'weekly' | 'monthly', startDate: Date): string[] => {
+const calculateDeliverySchedule = (plan: 'weekly' | 'monthly', startDate: Date): { date: string, status: 'pending' | 'delivered' }[] => {
     const dates: Date[] = [];
     let currentDate = new Date(startDate); 
     currentDate.setDate(currentDate.getDate() + 1);
@@ -38,12 +38,15 @@ const calculateDeliveryDates = (plan: 'weekly' | 'monthly', startDate: Date): st
 
     while (dates.length < deliveryCount) {
         const dayOfWeek = currentDate.getDay();
-        if (dayOfWeek >= 1 && dayOfWeek <= 5) {
+        if (dayOfWeek >= 1 && dayOfWeek <= 5) { // Monday to Friday
             dates.push(new Date(currentDate));
         }
         currentDate.setDate(currentDate.getDate() + 1);
     }
-    return dates.map(d => d.toISOString().split('T')[0]);
+    return dates.map(d => ({
+        date: d.toISOString().split('T')[0],
+        status: 'pending'
+    }));
 };
 
 async function findAvailableAgentForArea(city: string): Promise<any | null> {
@@ -136,7 +139,7 @@ export async function createOrder(userId: string, deliveryInfo: any) {
             total,
             status: 'Pending',
             createdAt: serverTimestamp(),
-            deliveryDates: null,
+            deliverySchedule: null,
             assignedAgentId: null,
             assignedAgentName: null,
         }
@@ -148,7 +151,7 @@ export async function createOrder(userId: string, deliveryInfo: any) {
             orderData.assignedAgentId = chosenAgent.uid;
             orderData.assignedAgentName = `${chosenAgent.firstName} ${chosenAgent.lastName}`;
             const plan = cartItems.some((item: any) => item.plan === 'monthly') ? 'monthly' : 'weekly';
-            orderData.deliveryDates = calculateDeliveryDates(plan, new Date());
+            orderData.deliverySchedule = calculateDeliverySchedule(plan, new Date());
 
             const agentRef = doc(db, 'deliveryAgents', chosenAgent.uid);
             batch.update(agentRef, { activeOrderCount: increment(1) });
@@ -195,12 +198,12 @@ export async function processUnassignedOrders(): Promise<{ success: boolean; ass
                 const agentRef = doc(db, 'deliveryAgents', chosenAgent.uid);
 
                 const plan = orderData.items.some((item: any) => item.plan === 'monthly') ? 'monthly' : 'weekly';
-                const deliveryDates = calculateDeliveryDates(plan, new Date());
+                const deliverySchedule = calculateDeliverySchedule(plan, new Date());
 
                 batch.update(orderRef, {
                     assignedAgentId: chosenAgent.uid,
                     assignedAgentName: `${chosenAgent.firstName} ${chosenAgent.lastName}`,
-                    deliveryDates: deliveryDates,
+                    deliverySchedule: deliverySchedule,
                 });
 
                 batch.update(agentRef, { activeOrderCount: increment(1) });

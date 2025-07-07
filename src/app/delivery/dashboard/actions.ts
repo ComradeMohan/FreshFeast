@@ -2,109 +2,100 @@
 'use server'
 
 import { db } from '@/lib/firebase'
-import { collection, query, where, getDocs, orderBy, doc, updateDoc, writeBatch, getDoc, increment } from 'firebase/firestore'
+import { collection, query, where, getDocs, doc, writeBatch, getDoc, increment } from 'firebase/firestore'
 import { format } from 'date-fns'
 import { revalidatePath } from 'next/cache'
 
-export type AssignedOrder = {
-    id: string;
-    userName: string;
-    status: string;
-    total: number;
-    createdAt: string;
-    deliveryInfo: {
-        address: string;
-        city: string;
-        state: string;
-        zip: string;
-        deliveryTime: string;
-    };
-    items: any[];
-}
+export type DailyDelivery = {
+    orderId: string;
+    customerName: string;
+    customerAddress: string;
+    deliveryTime: string;
+    status: 'pending' | 'delivered';
+};
 
-export async function getAssignedOrders(agentId: string): Promise<AssignedOrder[]> {
-    if (!agentId) {
-        return [];
-    }
-
-    try {
-        const ordersRef = collection(db, 'orders');
-        // A simpler query that only requires a single-field index on assignedAgentId,
-        // which Firestore creates automatically. This avoids complex index errors.
-        const ordersQuery = query(
-            ordersRef, 
-            where('assignedAgentId', '==', agentId)
-        );
-        const ordersSnapshot = await getDocs(ordersQuery);
-
-        const allAgentOrders = ordersSnapshot.docs.map(doc => {
-            const data = doc.data();
-            return {
-                id: doc.id,
-                userName: data.userName,
-                status: data.status,
-                total: data.total,
-                createdAtTimestamp: data.createdAt, // Keep original timestamp for sorting
-                createdAt: data.createdAt ? format(data.createdAt.toDate(), 'MMMM d, yyyy') : 'N/A',
-                items: data.items,
-                deliveryInfo: data.deliveryInfo,
-            };
-        });
-
-        // Filter for active orders and sort them in code.
-        const activeOrdersWithTimestamp = allAgentOrders
-            .filter(order => order.status === 'Pending' || order.status === 'Out for Delivery')
-            .sort((a, b) => {
-                if (!a.createdAtTimestamp || !b.createdAtTimestamp) return 0;
-                return b.createdAtTimestamp.toMillis() - a.createdAtTimestamp.toMillis();
-            });
-            
-        // Remove the non-serializable timestamp object before returning to the client
-        const finalOrders = activeOrdersWithTimestamp.map(order => {
-            const { createdAtTimestamp, ...rest } = order;
-            return rest;
-        })
-
-        return finalOrders as AssignedOrder[];
-    } catch (error) {
-        console.error("Error fetching assigned orders:", error);
-        return [];
-    }
-}
-
-export async function updateOrderStatus(orderId: string, status: string) {
-    if (!orderId || !status) {
-        return { success: false, error: 'Order ID or status is missing.' };
-    }
-
-    const orderDocRef = doc(db, 'orders', orderId);
-
-    try {
-        const orderSnap = await getDoc(orderDocRef);
-        if (!orderSnap.exists()) {
-            throw new Error("Order not found");
+export async function getDailyRoute(agentId: string): Promise<DailyDelivery[]> {
+    if (!agentId) return [];
+    
+    const today = format(new Date(), 'yyyy-MM-dd');
+    const deliveries: DailyDelivery[] = [];
+    
+    const ordersRef = collection(db, 'orders');
+    // We get all active orders for the agent and filter for today's deliveries in code,
+    // as Firestore doesn't support querying inside an array of objects efficiently without complex indexes.
+    const q = query(ordersRef, where('assignedAgentId', '==', agentId), where('status', 'in', ['Pending', 'Out for Delivery']));
+    
+    const querySnapshot = await getDocs(q);
+    
+    querySnapshot.forEach(doc => {
+        const order = doc.data();
+        if (order.deliverySchedule && Array.isArray(order.deliverySchedule)) {
+            const todayDelivery = order.deliverySchedule.find(d => d.date === today);
+            if (todayDelivery) {
+                deliveries.push({
+                    orderId: doc.id,
+                    customerName: order.userName,
+                    customerAddress: `${order.deliveryInfo.address}, ${order.deliveryInfo.city}, ${order.deliveryInfo.state} - ${order.deliveryInfo.zip}`,
+                    deliveryTime: order.deliveryInfo.deliveryTime,
+                    status: todayDelivery.status,
+                });
+            }
         }
-        const orderData = orderSnap.data();
-        const assignedAgentId = orderData.assignedAgentId;
-        const currentStatus = orderData.status;
+    });
 
-        const batch = writeBatch(db);
-        
-        // Update order status
-        batch.update(orderDocRef, { status });
+    return deliveries;
+}
 
-        // If status is changing to a completed state ('Delivered') and there was an assigned agent, decrement their count
-        if (status === 'Delivered' && currentStatus !== 'Delivered' && assignedAgentId) {
-            const agentRef = doc(db, 'deliveryAgents', assignedAgentId);
-            batch.update(agentRef, { activeOrderCount: increment(-1) });
+export async function markDeliveriesAsComplete(deliveriesToUpdate: { orderId: string }[]) {
+    if (!deliveriesToUpdate || deliveriesToUpdate.length === 0) {
+        return { success: false, error: 'No deliveries selected.' };
+    }
+    
+    const today = format(new Date(), 'yyyy-MM-dd');
+    const batch = writeBatch(db);
+
+    try {
+        for (const delivery of deliveriesToUpdate) {
+            const orderRef = doc(db, 'orders', delivery.orderId);
+            const orderSnap = await getDoc(orderRef);
+            
+            if (orderSnap.exists()) {
+                const orderData = orderSnap.data();
+                const schedule = orderData.deliverySchedule || [];
+                
+                let allDelivered = true;
+                const updatedSchedule = schedule.map(d => {
+                    let updatedDelivery = { ...d };
+                    if (d.date === today) {
+                        updatedDelivery.status = 'delivered';
+                    }
+                    if (updatedDelivery.status === 'pending') {
+                         allDelivered = false;
+                    }
+                    return updatedDelivery;
+                });
+
+                batch.update(orderRef, { deliverySchedule: updatedSchedule });
+
+                if (allDelivered) {
+                    batch.update(orderRef, { status: 'Delivered' });
+                    // Decrement agent's active order count only when the whole order is finished.
+                    if (orderData.assignedAgentId) {
+                        const agentRef = doc(db, 'deliveryAgents', orderData.assignedAgentId);
+                        batch.update(agentRef, { activeOrderCount: increment(-1) });
+                    }
+                }
+            }
         }
         
         await batch.commit();
-
         revalidatePath('/delivery/dashboard');
+        revalidatePath('/delivery-schedule'); // for customer calendar
+        revalidatePath('/admin/dashboard'); // for admin dashboard status
         return { success: true, error: null };
+
     } catch (error: any) {
-        console.error("Error updating order status:", error);
-        return { success: false, error: 'Failed to update order status.' };
+        console.error("Error marking deliveries as complete:", error);
+        return { success: false, error: 'Failed to update deliveries.' };
     }
 }

@@ -7,14 +7,15 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { CalendarDays, LoaderCircle, Package } from 'lucide-react'
 import { useAuthState } from 'react-firebase-hooks/auth'
 import { auth } from '@/lib/firebase'
-import { getUpcomingDeliveryDates } from './actions'
+import { getDeliverySchedule } from './actions'
+import type { Delivery } from './actions'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 
 export default function DeliverySchedulePage() {
     const [user, authLoading] = useAuthState(auth)
-    const [deliveryDates, setDeliveryDates] = useState<Date[]>([])
+    const [schedule, setSchedule] = useState<Delivery[]>([])
     const [loading, setLoading] = useState(true)
     
     useEffect(() => {
@@ -26,14 +27,8 @@ export default function DeliverySchedulePage() {
 
         const fetchSchedule = async () => {
             setLoading(true)
-            const datesFromServer = await getUpcomingDeliveryDates(user.uid)
-            // The dates are strings, so we need to convert them back to Date objects
-            // The calendar is in the user's local timezone, so we need to adjust for that.
-            const dates = datesFromServer.map(d => {
-                const [year, month, day] = d.split('-').map(Number);
-                return new Date(year, month - 1, day);
-            });
-            setDeliveryDates(dates)
+            const scheduleFromServer = await getDeliverySchedule(user.uid)
+            setSchedule(scheduleFromServer)
             setLoading(false)
         }
 
@@ -41,7 +36,18 @@ export default function DeliverySchedulePage() {
     }, [user, authLoading])
 
     const today = new Date();
-    const defaultMonth = deliveryDates.length > 0 ? deliveryDates[0] : today;
+    
+    const convertToDate = (dateString: string) => {
+        const [year, month, day] = dateString.split('-').map(Number);
+        // Using UTC to prevent timezone shifts from changing the date
+        return new Date(Date.UTC(year, month - 1, day));
+    };
+
+    const pendingDays = schedule.filter(d => d.status === 'pending').map(d => convertToDate(d.date));
+    const deliveredDays = schedule.filter(d => d.status === 'delivered').map(d => convertToDate(d.date));
+    
+    const allDeliveryDates = [...pendingDays, ...deliveredDays];
+    const defaultMonth = allDeliveryDates.length > 0 ? allDeliveryDates[0] : today;
 
     if (authLoading || loading) {
         return (
@@ -78,17 +84,25 @@ export default function DeliverySchedulePage() {
                     <CardDescription>This calendar shows the scheduled delivery dates for your active subscription.</CardDescription>
                 </CardHeader>
                 <CardContent className="flex flex-col items-center">
-                   {deliveryDates.length > 0 ? (
+                   {allDeliveryDates.length > 0 ? (
                      <>
                         <Calendar
-                            mode="multiple"
-                            selected={deliveryDates}
+                            modifiers={{ delivered: deliveredDays, pending: pendingDays }}
+                            modifiersClassNames={{
+                                delivered: 'day-delivered',
+                                pending: 'day-pending',
+                            }}
+                            selected={allDeliveryDates}
                             defaultMonth={defaultMonth}
                             numberOfMonths={2}
                             className="p-0"
-                            disabled={(date) => date < new Date(today.setHours(0,0,0,0))}
+                            disabled={(date) => date < new Date(new Date().setUTCHours(0,0,0,0))}
                         />
-                        <p className="text-sm text-muted-foreground mt-4 text-center">
+                         <div className="flex items-center space-x-4 mt-4 text-sm text-muted-foreground">
+                            <div className="flex items-center space-x-2"><span className="h-4 w-4 rounded-full bg-orange-400"></span><span>Pending</span></div>
+                            <div className="flex items-center space-x-2"><span className="h-4 w-4 rounded-full bg-green-500"></span><span>Delivered</span></div>
+                        </div>
+                        <p className="text-sm text-muted-foreground mt-2 text-center">
                             Deliveries are made Monday to Friday. Your schedule is based on your most recent active subscription.
                         </p>
                      </>

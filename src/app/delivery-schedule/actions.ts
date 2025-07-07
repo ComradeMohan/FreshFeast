@@ -1,9 +1,15 @@
+
 'use server'
 
 import { db } from '@/lib/firebase'
 import { collection, query, where, getDocs, orderBy, limit } from 'firebase/firestore'
 
-export async function getUpcomingDeliveryDates(userId: string): Promise<string[]> {
+export type Delivery = {
+    date: string;
+    status: 'pending' | 'delivered';
+}
+
+export async function getDeliverySchedule(userId: string): Promise<Delivery[]> {
     if (!userId) {
         return [];
     }
@@ -26,14 +32,17 @@ export async function getUpcomingDeliveryDates(userId: string): Promise<string[]
     // Find the most recent order that has a schedule that is still active
     for (const doc of querySnapshot.docs) {
         const data = doc.data();
-        if (data.deliveryDates && Array.isArray(data.deliveryDates) && data.deliveryDates.length > 0) {
+        if (data.deliverySchedule && Array.isArray(data.deliverySchedule) && data.deliverySchedule.length > 0) {
             // Check if the last delivery date in the schedule is in the future
-            const lastDateStr = data.deliveryDates[data.deliveryDates.length - 1];
-            const [year, month, day] = lastDateStr.split('-').map(Number);
-            const lastDate = new Date(year, month - 1, day);
+            const lastDelivery = data.deliverySchedule[data.deliverySchedule.length - 1];
+            const [year, month, day] = lastDelivery.date.split('-').map(Number);
+            // Use UTC to avoid timezone issues with date comparisons
+            const lastDate = new Date(Date.UTC(year, month - 1, day));
+            const today = new Date();
+            const todayUTC = new Date(Date.UTC(today.getFullYear(), today.getMonth(), today.getDate()));
 
-            if (lastDate >= new Date()) {
-                 return data.deliveryDates; // Return the schedule of the first active order found
+            if (lastDate >= todayUTC) {
+                 return data.deliverySchedule as Delivery[]; // Return the schedule of the first active order found
             }
         }
     }
