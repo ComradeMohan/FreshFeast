@@ -139,7 +139,7 @@ export default function CartPage() {
                         <span>Total</span>
                         <span>₹{total.toFixed(2)}</span>
                     </div>
-                    <Button size="lg" className="w-full mt-4 bg-accent hover:bg-accent/90" asChild>
+                    <Button size="lg" className="w-full mt-4 bg-primary hover:bg-primary/90" asChild>
                         <Link href="/checkout">
                             Proceed to Checkout <ArrowRight className="ml-2 h-5 w-5" />
                         </Link>
