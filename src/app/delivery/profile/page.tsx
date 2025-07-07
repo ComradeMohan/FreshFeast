@@ -10,6 +10,7 @@ import { updatePassword } from 'firebase/auth'
 import { doc, getDoc } from 'firebase/firestore'
 import { useRouter } from 'next/navigation'
 import Image from 'next/image'
+import { getAssignedAreasForAgent } from './actions'
 
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -19,6 +20,8 @@ import { useToast } from '@/hooks/use-toast'
 import { LoaderCircle, UserCircle, LogOut } from 'lucide-react'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion"
+import { Badge } from '@/components/ui/badge'
+import { Separator } from '@/components/ui/separator'
 
 const passwordFormSchema = z.object({
   newPassword: z.string().min(6, { message: "Password must be at least 6 characters" }),
@@ -41,6 +44,7 @@ export default function DeliveryProfilePage() {
   const [user, authLoading] = useAuthState(auth)
   const [agentData, setAgentData] = useState<AgentData | null>(null)
   const [userLoading, setUserLoading] = useState(true)
+  const [assignedAreas, setAssignedAreas] = useState<string[]>([])
   const router = useRouter()
   const { toast } = useToast()
 
@@ -56,19 +60,27 @@ export default function DeliveryProfilePage() {
       return;
     }
 
-    const fetchAgentData = async () => {
+    const fetchAgentDataAndAreas = async () => {
       setUserLoading(true);
+      
       const agentDocRef = doc(db, "deliveryAgents", user.uid);
       const agentDocSnap = await getDoc(agentDocRef);
+      
       if (agentDocSnap.exists()) {
         setAgentData(agentDocSnap.data() as AgentData);
       } else {
-        toast({ variant: 'destructive', title: "Not a delivery agent" })
-        router.push('/delivery/login')
+        toast({ variant: 'destructive', title: "Not a delivery agent" });
+        router.push('/delivery/login');
+        setUserLoading(false);
+        return;
       }
+      
+      const areas = await getAssignedAreasForAgent(user.uid);
+      setAssignedAreas(areas);
+      
       setUserLoading(false);
     }
-    fetchAgentData();
+    fetchAgentDataAndAreas();
   }, [user, authLoading, router, toast])
 
   async function onSubmitPassword(values: z.infer<typeof passwordFormSchema>) {
@@ -145,6 +157,25 @@ export default function DeliveryProfilePage() {
              <div className="flex flex-col">
               <span className="text-sm text-muted-foreground">Driving License</span>
               {isLoading ? <Skeleton className="h-6 w-40 mt-1" /> : <span className="font-medium">{agentData?.drivingLicense}</span>}
+            </div>
+            <Separator className="my-4" />
+            <div className="flex flex-col">
+              <span className="text-sm text-muted-foreground">Assigned Delivery Areas</span>
+              {isLoading ? (
+                <div className="mt-2 space-y-2">
+                  <Skeleton className="h-6 w-3/4" />
+                </div>
+              ) : assignedAreas.length > 0 ? (
+                <div className="flex flex-wrap gap-2 mt-2">
+                  {assignedAreas.map((area) => (
+                    <Badge key={area} variant="secondary" className="text-base">
+                      {area}
+                    </Badge>
+                  ))}
+                </div>
+              ) : (
+                <span className="font-medium mt-1">No areas assigned yet.</span>
+              )}
             </div>
           </CardContent>
         </Card>
