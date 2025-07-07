@@ -3,8 +3,9 @@
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { useAuthState } from 'react-firebase-hooks/auth'
-import { auth } from '@/lib/firebase'
-import { getUserOrders, type Order } from './actions'
+import { auth, db } from '@/lib/firebase'
+import { collection, query, where, onSnapshot, orderBy } from 'firebase/firestore'
+import { format } from 'date-fns'
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
@@ -12,6 +13,14 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { LoaderCircle, ListOrdered, ShoppingBag } from 'lucide-react'
 import { Skeleton } from '@/components/ui/skeleton'
+
+export type Order = {
+    id: string;
+    status: string;
+    total: number;
+    createdAt: string; 
+    items: any[];
+}
 
 const statusVariant: { [key: string]: "default" | "secondary" | "destructive" | "outline" } = {
   'Pending': 'secondary',
@@ -29,14 +38,34 @@ export default function OrdersPage() {
       setLoading(true);
       return;
     }
-    if (user) {
-      setLoading(true);
-      getUserOrders(user.uid)
-        .then(setOrders)
-        .finally(() => setLoading(false));
-    } else {
+    if (!user) {
       setLoading(false);
+      return;
     }
+
+    setLoading(true);
+    const ordersRef = collection(db, 'orders');
+    const q = query(ordersRef, where('userId', '==', user.uid), orderBy('createdAt', 'desc'));
+    
+    const unsubscribe = onSnapshot(q, (querySnapshot) => {
+        const userOrders = querySnapshot.docs.map(doc => {
+            const data = doc.data();
+            return {
+                id: doc.id,
+                status: data.status,
+                total: data.total,
+                createdAt: data.createdAt ? format(data.createdAt.toDate(), 'MMMM d, yyyy') : 'N/A',
+                items: data.items,
+            } as Order;
+        });
+        setOrders(userOrders);
+        setLoading(false);
+    }, (error) => {
+        console.error("Error fetching orders: ", error);
+        setLoading(false);
+    });
+
+    return () => unsubscribe();
   }, [user, authLoading]);
 
   if (authLoading) {
