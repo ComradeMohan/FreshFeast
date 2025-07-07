@@ -113,8 +113,14 @@ export default function ManageAgentsPage() {
                       <CardDescription>{agent.email}</CardDescription>
                     </CardHeader>
                     <CardContent className="flex-grow space-y-4">
-                      <div className="relative aspect-video w-full rounded-md overflow-hidden">
-                        <Image src={agent.photoUrl} alt={`Photo of ${agent.firstName}`} fill className="object-cover"/>
+                      <div className="relative aspect-video w-full rounded-md overflow-hidden bg-muted">
+                        {agent.photoUrl ? (
+                          <Image src={agent.photoUrl} alt={`Photo of ${agent.firstName}`} fill className="object-cover"/>
+                        ) : (
+                          <div className="flex items-center justify-center h-full">
+                            <span className="text-sm text-muted-foreground">No photo</span>
+                          </div>
+                        )}
                       </div>
                       <div><p className="text-sm font-medium">Phone:</p><p>{agent.phone}</p></div>
                       <div><p className="text-sm font-medium">License #:</p><p>{agent.drivingLicense}</p></div>
