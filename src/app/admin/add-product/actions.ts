@@ -3,14 +3,20 @@
 import { createClient } from '@supabase/supabase-js'
 import { revalidatePath } from 'next/cache'
 
-// Note: We are not using the client from /lib/supabase.ts because we need the service role key for admin actions.
-// The service role key should be stored in .env.local and MUST NOT be exposed to the client.
-const supabaseAdmin = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-)
-
 export async function addProduct(formData: FormData) {
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+  const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY
+
+  if (!supabaseUrl || !supabaseServiceKey) {
+    const errorMessage = "Supabase URL or Service Role Key is missing. Please check your .env.local file and restart the server."
+    console.error(errorMessage)
+    return { error: errorMessage }
+  }
+
+  // Note: We are not using the client from /lib/supabase.ts because we need the service role key for admin actions.
+  // The service role key should be stored in .env.local and MUST NOT be exposed to the client.
+  const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey)
+
   const file_name = formData.get('file_name') as string
   const description = formData.get('description') as string
   const price_weekly = parseFloat(formData.get('price_weekly') as string)
