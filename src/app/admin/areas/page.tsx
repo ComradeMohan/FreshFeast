@@ -100,11 +100,11 @@ export default function ManageAreasPage() {
                     <CardContent>
                     <Form {...form}>
                         <form onSubmit={form.handleSubmit(onSubmit)} className="grid gap-6">
-                            <FormField control={form.control} name="name" render={({ field }) => (
-                                <FormItem><FormLabel>Area Name</FormLabel><FormControl><Input placeholder="e.g., Bandra West" {...field} /></FormControl><FormMessage /></FormItem>
-                            )} />
                             <FormField control={form.control} name="state" render={({ field }) => (
                                 <FormItem><FormLabel>State</FormLabel><FormControl><Input placeholder="e.g., Maharashtra" {...field} /></FormControl><FormMessage /></FormItem>
+                            )} />
+                            <FormField control={form.control} name="name" render={({ field }) => (
+                                <FormItem><FormLabel>Area Name</FormLabel><FormControl><Input placeholder="e.g., Bandra West" {...field} /></FormControl><FormMessage /></FormItem>
                             )} />
                             <FormField control={form.control} name="pincode" render={({ field }) => (
                                 <FormItem><FormLabel>Pincode</FormLabel><FormControl><Input placeholder="400050" {...field} /></FormControl><FormMessage /></FormItem>
