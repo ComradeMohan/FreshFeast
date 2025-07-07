@@ -10,16 +10,16 @@ import { Trash2, ArrowRight } from 'lucide-react'
 const cartItems = [
   {
     id: '1',
-    name: 'Tropical Paradise Box',
-    price: 39.99,
+    name: 'Tropical Paradise Box (Monthly)',
+    price: 4499,
     quantity: 1,
     image: 'https://placehold.co/600x400',
     hint: 'tropical fruit',
   },
   {
     id: '2',
-    name: 'Berry Bliss Box',
-    price: 34.99,
+    name: 'Berry Bliss Box (Weekly)',
+    price: 1099,
     quantity: 2,
     image: 'https://placehold.co/600x400',
     hint: 'fresh berries',
@@ -27,7 +27,7 @@ const cartItems = [
 ];
 
 const subtotal = cartItems.reduce((acc, item) => acc + item.price * item.quantity, 0);
-const shipping = 5.00;
+const shipping = 50.00;
 const total = subtotal + shipping;
 
 export default function CartPage() {
@@ -43,7 +43,7 @@ export default function CartPage() {
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead className="w-[100px]">Product</TableHead>
+                    <TableHead className="w-[100px]">Package</TableHead>
                     <TableHead>Details</TableHead>
                     <TableHead className="text-center">Quantity</TableHead>
                     <TableHead className="text-right">Price</TableHead>
@@ -67,7 +67,7 @@ export default function CartPage() {
                       <TableCell>
                         <Input type="number" defaultValue={item.quantity} className="w-16 text-center" />
                       </TableCell>
-                      <TableCell className="text-right">${(item.price * item.quantity).toFixed(2)}</TableCell>
+                      <TableCell className="text-right">₹{(item.price * item.quantity).toFixed(2)}</TableCell>
                       <TableCell>
                         <Button variant="ghost" size="icon">
                           <Trash2 className="h-4 w-4 text-muted-foreground" />
@@ -88,16 +88,16 @@ export default function CartPage() {
                 <CardContent className="grid gap-4">
                     <div className="flex justify-between">
                         <span>Subtotal</span>
-                        <span>${subtotal.toFixed(2)}</span>
+                        <span>₹{subtotal.toFixed(2)}</span>
                     </div>
                     <div className="flex justify-between">
                         <span>Shipping</span>
-                        <span>${shipping.toFixed(2)}</span>
+                        <span>₹{shipping.toFixed(2)}</span>
                     </div>
                     <Separator />
                     <div className="flex justify-between font-bold text-lg">
                         <span>Total</span>
-                        <span>${total.toFixed(2)}</span>
+                        <span>₹{total.toFixed(2)}</span>
                     </div>
                     <Button size="lg" className="w-full mt-4 bg-accent hover:bg-accent/90" asChild>
                         <Link href="/checkout">

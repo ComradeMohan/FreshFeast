@@ -95,26 +95,26 @@ export default function CheckoutPage() {
             </CardHeader>
             <CardContent className="grid gap-4">
                 <div className="flex justify-between text-muted-foreground">
-                    <span>Tropical Paradise Box (x1)</span>
-                    <span>$39.99</span>
+                    <span>Tropical Paradise Box (Monthly) (x1)</span>
+                    <span>₹4,499.00</span>
                 </div>
                 <div className="flex justify-between text-muted-foreground">
-                    <span>Berry Bliss Box (x2)</span>
-                    <span>$69.98</span>
+                    <span>Berry Bliss Box (Weekly) (x2)</span>
+                    <span>₹2,198.00</span>
                 </div>
                 <Separator />
                 <div className="flex justify-between">
                     <span>Subtotal</span>
-                    <span>$109.97</span>
+                    <span>₹6,697.00</span>
                 </div>
                 <div className="flex justify-between">
                     <span>Shipping</span>
-                    <span>$5.00</span>
+                    <span>₹50.00</span>
                 </div>
                 <Separator />
                 <div className="flex justify-between font-bold text-lg">
                     <span>Total</span>
-                    <span>$114.97</span>
+                    <span>₹6,747.00</span>
                 </div>
                 <Button size="lg" className="w-full mt-4 bg-primary hover:bg-primary/90" asChild>
                     <Link href="/order/confirmation">

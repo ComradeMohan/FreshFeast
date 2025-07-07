@@ -5,15 +5,15 @@ import { Badge } from "@/components/ui/badge";
 import { Users, Package, DollarSign, PlusCircle } from 'lucide-react';
 
 const stats = [
-  { title: 'Total Revenue', value: '$12,450', icon: DollarSign },
+  { title: 'Total Revenue', value: '₹1,24,500', icon: DollarSign },
   { title: 'Active Orders', value: '125', icon: Package },
   { title: 'Delivery Agents', value: '12', icon: Users },
 ]
 
 const recentOrders = [
-  { id: '#FFH12345', customer: 'John Doe', status: 'Delivered', total: '$64.98' },
-  { id: '#FFH12346', customer: 'Jane Smith', status: 'Pending', total: '$29.99' },
-  { id: '#FFH12347', customer: 'Bob Johnson', status: 'Out for Delivery', total: '$39.99' },
+  { id: '#FFH12345', customer: 'John Doe', status: 'Delivered', total: '₹6,498' },
+  { id: '#FFH12346', customer: 'Jane Smith', status: 'Pending', total: '₹2,999' },
+  { id: '#FFH12347', customer: 'Bob Johnson', status: 'Out for Delivery', total: '₹3,999' },
 ];
 
 const statusVariant: { [key: string]: "default" | "secondary" | "destructive" | "outline" } = {
@@ -28,11 +28,11 @@ export default function AdminDashboard() {
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-8">
         <div>
             <h1 className="text-3xl font-headline font-bold tracking-tighter sm:text-4xl">Admin Dashboard</h1>
-            <p className="text-muted-foreground mt-1">Manage your store, products, and deliveries.</p>
+            <p className="text-muted-foreground mt-1">Manage your store, packages, and deliveries.</p>
         </div>
         <Button>
             <PlusCircle className="mr-2 h-4 w-4" />
-            Add New Product
+            Add New Package
         </Button>
       </div>
 

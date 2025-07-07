@@ -13,20 +13,21 @@ import { Button } from '@/components/ui/button'
 import { ShoppingCart } from 'lucide-react'
 import { useCartBubble } from '@/hooks/use-cart-bubble'
 
-type Product = {
+type Package = {
   id: string
   name: string
   description: string
-  price: string
+  price_weekly: string
+  price_monthly: string
   image: string
   hint: string
 }
 
 type ProductCardProps = {
-  product: Product
+  packageItem: Package
 }
 
-export function ProductCard({ product }: ProductCardProps) {
+export function ProductCard({ packageItem }: ProductCardProps) {
   const { setShowCartBubble } = useCartBubble()
 
   const handleAddToCart = () => {
@@ -38,24 +39,40 @@ export function ProductCard({ product }: ProductCardProps) {
       <CardHeader className="p-0">
         <div className="aspect-video relative">
           <Image
-            src={product.image}
-            alt={product.name}
+            src={packageItem.image}
+            alt={packageItem.name}
             fill
             className="object-cover"
-            data-ai-hint={product.hint}
+            data-ai-hint={packageItem.hint}
           />
         </div>
       </CardHeader>
       <CardContent className="p-4 flex-grow">
-        <CardTitle className="text-lg font-headline">{product.name}</CardTitle>
-        <CardDescription className="mt-2 text-sm">{product.description}</CardDescription>
+        <CardTitle className="text-lg font-headline">{packageItem.name}</CardTitle>
+        <CardDescription className="mt-2 text-sm">{packageItem.description}</CardDescription>
       </CardContent>
-      <CardFooter className="p-4 flex justify-between items-center">
-        <p className="text-lg font-bold text-primary">${product.price}</p>
-        <Button onClick={handleAddToCart} size="sm" className="bg-accent hover:bg-accent/90 text-accent-foreground">
-          <ShoppingCart className="mr-2 h-4 w-4" />
-          Add to Cart
-        </Button>
+      <CardFooter className="p-4 flex-col items-start gap-3">
+        <div className="w-full flex justify-between items-center">
+            <div>
+                <p className="text-xs text-muted-foreground">Weekly</p>
+                <p className="text-lg font-bold text-primary">₹{packageItem.price_weekly}</p>
+            </div>
+            <Button onClick={handleAddToCart} size="sm" className="bg-accent hover:bg-accent/90 text-accent-foreground">
+                <ShoppingCart className="mr-2 h-4 w-4" />
+                Add
+            </Button>
+        </div>
+         <div className="w-full flex justify-between items-center">
+            <div>
+                <p className="text-xs text-muted-foreground">Monthly</p>
+                <p className="text-lg font-bold text-primary">₹{packageItem.price_monthly}</p>
+            </div>
+            <Button onClick={handleAddToCart} size="sm" className="bg-accent hover:bg-accent/90 text-accent-foreground">
+                <ShoppingCart className="mr-2 h-4 w-4" />
+                Add
+            </Button>
+        </div>
+        <Button variant="outline" className="w-full mt-2">Customize Box</Button>
       </CardFooter>
     </Card>
   )

@@ -21,11 +21,18 @@ export function Header() {
   const [showNotificationButton, setShowNotificationButton] = useState(false)
   const [isSheetOpen, setIsSheetOpen] = useState(false)
 
-  const navLinks = [
-    ...(!user ? [{ href: '/', label: 'Home' }] : []),
-    { href: '/#products', label: 'All Fruit Boxes' },
-    { href: '/careers', label: 'Careers' },
-  ]
+  const loggedInNavLinks = [
+      { href: '/#packages', label: 'Our Packages' },
+      { href: '/careers', label: 'Careers' },
+  ];
+  
+  const loggedOutNavLinks = [
+      { href: '/', label: 'Home' },
+      { href: '/#packages', label: 'Our Packages' },
+      { href: '/careers', label: 'Careers' },
+  ];
+  
+  const currentNavLinks = user ? loggedInNavLinks : loggedOutNavLinks;
 
   useEffect(() => {
     if (user && typeof window !== 'undefined' && 'Notification' in window) {
@@ -166,7 +173,7 @@ export function Header() {
               </SheetTrigger>
               <SheetContent side="right">
                 <nav className="grid gap-6 text-lg font-medium mt-10">
-                  {navLinks.map(({ href, label }) => (
+                  {currentNavLinks.map(({ href, label }) => (
                     <Link
                       key={href}
                       href={href}
@@ -186,7 +193,7 @@ export function Header() {
         ) : (
           <div className="flex flex-1 items-center justify-end gap-6">
             <nav className="flex items-center gap-6 text-sm">
-              {navLinks.map(({ href, label }) => (
+              {currentNavLinks.map(({ href, label }) => (
                 <Link
                   key={href}
                   href={href}
