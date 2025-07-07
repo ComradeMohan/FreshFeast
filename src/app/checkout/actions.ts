@@ -1,7 +1,7 @@
 'use server'
 
 import { db } from '@/lib/firebase'
-import { collection, getDocs, writeBatch, addDoc, serverTimestamp, doc, getDoc, query, orderBy } from 'firebase/firestore'
+import { collection, getDocs, writeBatch, addDoc, serverTimestamp, doc, getDoc, query, orderBy, where } from 'firebase/firestore'
 import { redirect } from 'next/navigation'
 import QRCode from 'qrcode'
 import { z } from 'zod'
@@ -26,6 +26,25 @@ export async function generateQrCode(amount: number) {
     return { qrCodeUrl: null, error: 'Could not generate QR code.' }
   }
 }
+
+const calculateDeliveryDates = (plan: 'weekly' | 'monthly', startDate: Date): string[] => {
+    const dates: Date[] = [];
+    let currentDate = new Date(startDate); 
+    // Start from next day to avoid same-day delivery complexities
+    currentDate.setDate(currentDate.getDate() + 1);
+
+    const deliveryCount = plan === 'weekly' ? 5 : 22; // 5 weekdays for weekly, ~22 for monthly
+
+    while (dates.length < deliveryCount) {
+        const dayOfWeek = currentDate.getDay(); // 0 = Sunday, 6 = Saturday
+        if (dayOfWeek >= 1 && dayOfWeek <= 5) { // Monday to Friday
+            dates.push(new Date(currentDate));
+        }
+        currentDate.setDate(currentDate.getDate() + 1);
+    }
+    return dates.map(d => d.toISOString().split('T')[0]); // Store as 'YYYY-MM-DD'
+};
+
 
 export async function createOrder(userId: string, deliveryInfo: any) {
     if (!userId) {
@@ -60,7 +79,7 @@ export async function createOrder(userId: string, deliveryInfo: any) {
         const shipping = cartItems.length > 0 ? await getChargeFromSettings() : 0;
         const total = subtotal + shipping
 
-        const orderData = {
+        const orderData: any = {
             userId,
             userName,
             userEmail,
@@ -72,6 +91,20 @@ export async function createOrder(userId: string, deliveryInfo: any) {
             total,
             status: 'Pending',
             createdAt: serverTimestamp(),
+            deliveryDates: null,
+        }
+
+        // Check if an agent is assigned to the area and calculate delivery dates
+        const areasRef = collection(db, 'serviceableAreas');
+        const areaQuery = query(areasRef, where('name', '==', deliveryInfo.city));
+        const areaSnapshot = await getDocs(areaQuery);
+
+        if (!areaSnapshot.empty) {
+            const areaDoc = areaSnapshot.docs[0].data();
+            if (areaDoc.assignedAgentId) {
+                const plan = cartItems.some((item: any) => item.plan === 'monthly') ? 'monthly' : 'weekly';
+                orderData.deliveryDates = calculateDeliveryDates(plan, new Date());
+            }
         }
 
         const orderRef = await addDoc(collection(db, 'orders'), orderData)
