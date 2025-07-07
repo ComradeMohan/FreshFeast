@@ -1,3 +1,4 @@
+
 'use server'
 
 import { db } from '@/lib/firebase'
@@ -10,6 +11,7 @@ export type Order = {
     total: number;
     createdAt: string; // Will be a formatted string
     items: any[];
+    assignedAgentName?: string;
 }
 
 export async function getUserOrders(userId: string): Promise<Order[]> {
@@ -31,6 +33,7 @@ export async function getUserOrders(userId: string): Promise<Order[]> {
                 // Firestore timestamp to serializable string
                 createdAt: data.createdAt ? format(data.createdAt.toDate(), 'MMMM d, yyyy') : 'N/A',
                 items: data.items,
+                assignedAgentName: data.assignedAgentName || null,
             } as Order;
         });
 

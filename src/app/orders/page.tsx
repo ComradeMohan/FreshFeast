@@ -1,3 +1,4 @@
+
 'use client'
 
 import { useState, useEffect } from 'react'
@@ -11,7 +12,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { LoaderCircle, ListOrdered, ShoppingBag } from 'lucide-react'
+import { LoaderCircle, ListOrdered, ShoppingBag, Truck } from 'lucide-react'
 import { Skeleton } from '@/components/ui/skeleton'
 
 export type Order = {
@@ -20,6 +21,7 @@ export type Order = {
     total: number;
     createdAt: string; 
     items: any[];
+    assignedAgentName?: string;
 }
 
 const statusVariant: { [key: string]: "default" | "secondary" | "destructive" | "outline" } = {
@@ -56,6 +58,7 @@ export default function OrdersPage() {
                 total: data.total,
                 createdAt: data.createdAt ? format(data.createdAt.toDate(), 'MMMM d, yyyy') : 'N/A',
                 items: data.items,
+                assignedAgentName: data.assignedAgentName || null,
             } as Order;
         });
         setOrders(userOrders);
@@ -109,6 +112,7 @@ export default function OrdersPage() {
                             <TableHead>Order ID</TableHead>
                             <TableHead>Date</TableHead>
                             <TableHead>Status</TableHead>
+                            <TableHead>Assigned Agent</TableHead>
                             <TableHead className="text-right">Total</TableHead>
                         </TableRow>
                     </TableHeader>
@@ -119,6 +123,7 @@ export default function OrdersPage() {
                                     <TableCell><Skeleton className="h-5 w-32" /></TableCell>
                                     <TableCell><Skeleton className="h-5 w-24" /></TableCell>
                                     <TableCell><Skeleton className="h-6 w-28" /></TableCell>
+                                    <TableCell><Skeleton className="h-5 w-24" /></TableCell>
                                     <TableCell className="text-right"><Skeleton className="h-5 w-16 ml-auto" /></TableCell>
                                </TableRow>
                             ))
@@ -130,12 +135,22 @@ export default function OrdersPage() {
                                     <TableCell>
                                         <Badge variant={statusVariant[order.status] || 'secondary'}>{order.status}</Badge>
                                     </TableCell>
+                                    <TableCell>
+                                        {order.assignedAgentName ? (
+                                            <div className="flex items-center gap-2">
+                                                <Truck className="h-4 w-4 text-muted-foreground" />
+                                                <span>{order.assignedAgentName}</span>
+                                            </div>
+                                        ) : (
+                                            <span className="text-muted-foreground">Not Assigned</span>
+                                        )}
+                                    </TableCell>
                                     <TableCell className="text-right">₹{order.total.toFixed(2)}</TableCell>
                                 </TableRow>
                             ))
                         ) : (
                             <TableRow>
-                                <TableCell colSpan={4} className="h-24 text-center">
+                                <TableCell colSpan={5} className="h-24 text-center">
                                     <ShoppingBag className="mx-auto h-12 w-12 text-muted-foreground" />
                                     <p className="mt-4 font-medium">No orders found.</p>
                                     <p className="text-muted-foreground text-sm">You haven't placed any orders yet.</p>
