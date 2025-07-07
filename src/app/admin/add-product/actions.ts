@@ -28,7 +28,8 @@ export async function addProduct(formData: FormData) {
   }
 
   try {
-    const filePath = `products/${Date.now()}_${image.name}`
+    // The path within the bucket should not contain the bucket name again.
+    const filePath = `${Date.now()}_${image.name}`
     
     // 1. Upload image to Supabase Storage
     const { error: uploadError } = await supabaseAdmin.storage
