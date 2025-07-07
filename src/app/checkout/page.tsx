@@ -65,20 +65,31 @@ export default function CheckoutPage() {
                         <Label htmlFor="address">Street Address</Label>
                         <Input id="address" placeholder="123 Fruit Lane" />
                     </div>
-                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <div className="grid gap-2">
                             <Label htmlFor="city">City</Label>
                             <Input id="city" placeholder="Fruityville" />
                         </div>
                         <div className="grid gap-2">
                             <Label htmlFor="state">State</Label>
-                            <Input id="state" placeholder="CA" />
+                            <Input id="state" placeholder="Maharashtra" />
                         </div>
                         <div className="grid gap-2">
                             <Label htmlFor="zip">ZIP Code</Label>
-                            <Input id="zip" placeholder="90210" />
+                            <Input id="zip" placeholder="400001" />
+                        </div>
+                        <div className="grid gap-2">
+                            <Label htmlFor="digipin">DigiPIN</Label>
+                            <Input id="digipin" placeholder="e.g., MU400001A01" />
                         </div>
                     </div>
+                     <p className="text-sm text-muted-foreground -mt-2">
+                        Find your required DigiPIN at the{' '}
+                        <Link href="https://dac.indiapost.gov.in/mydigipin/home" target="_blank" rel="noopener noreferrer" className="underline font-medium text-primary">
+                            India Post website
+                        </Link>
+                        .
+                    </p>
                     <div className="grid gap-2">
                         <Label>Delivery Time</Label>
                         <Select>
