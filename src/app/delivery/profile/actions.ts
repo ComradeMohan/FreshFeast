@@ -1,7 +1,7 @@
 'use server'
 
 import { db } from '@/lib/firebase'
-import { collection, query, where, getDocs, doc, updateDoc } from 'firestore'
+import { collection, query, where, getDocs, doc, updateDoc } from 'firebase/firestore'
 import { revalidatePath } from 'next/cache'
 
 export async function getAssignedAreasForAgent(agentId: string): Promise<string[]> {

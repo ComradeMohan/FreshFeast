@@ -1,7 +1,7 @@
 'use server'
 
 import { db } from '@/lib/firebase'
-import { collection, query, where, getDocs, orderBy, doc, updateDoc, writeBatch, getDoc, increment } from 'firestore'
+import { collection, query, where, getDocs, orderBy, doc, updateDoc, writeBatch, getDoc, increment } from 'firebase/firestore'
 import { format } from 'date-fns'
 import { revalidatePath } from 'next/cache'
 

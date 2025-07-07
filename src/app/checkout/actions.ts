@@ -1,7 +1,7 @@
 'use server'
 
 import { db } from '@/lib/firebase'
-import { collection, getDocs, writeBatch, addDoc, serverTimestamp, doc, getDoc, query, where, limit, increment } from 'firestore'
+import { collection, getDocs, writeBatch, addDoc, serverTimestamp, doc, getDoc, query, where, limit, increment } from 'firebase/firestore'
 import { redirect } from 'next/navigation'
 import QRCode from 'qrcode'
 import { z } from 'zod'
