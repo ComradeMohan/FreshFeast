@@ -61,10 +61,8 @@ async function findAvailableAgentForArea(city: string): Promise<any | null> {
     if (assignedAgentIds.length === 0) {
         return null; // No agents assigned to this area
     }
-
-    // A more robust query using the document ID. We fetch all assigned agents 
-    // and then filter by status and capacity client-side.
-    // This is less prone to complex index requirements.
+    
+    // This query is more robust as it does not require a composite index.
     const agentsQuery = query(
         collection(db, 'deliveryAgents'), 
         where(documentId(), 'in', assignedAgentIds)
@@ -77,15 +75,17 @@ async function findAvailableAgentForArea(city: string): Promise<any | null> {
 
     const agentsData = agentsSnapshot.docs.map(doc => ({ uid: doc.id, ...doc.data() }));
     
-    // Filter by status and capacity client-side
-    const eligibleAgents = agentsData.filter((agent:any) => 
-        agent.status === 'approved' && 
-        agent.activeOrderCount < agent.maxDeliveries
-    );
+    // Filter by status and capacity client-side for robustness
+    const eligibleAgents = agentsData.filter((agent:any) => {
+        const isActive = agent.status === 'approved';
+        // Give a default capacity if not set, to avoid issues with older documents.
+        const hasCapacity = (agent.activeOrderCount ?? 0) < (agent.maxDeliveries ?? 10);
+        return isActive && hasCapacity;
+    });
 
     if (eligibleAgents.length > 0) {
         // Sort by who has the fewest active orders to balance the load
-        eligibleAgents.sort((a, b) => a.activeOrderCount - b.activeOrderCount);
+        eligibleAgents.sort((a, b) => (a.activeOrderCount ?? 0) - (b.activeOrderCount ?? 0));
         return eligibleAgents[0]; // Return the agent with the least work
     }
 
