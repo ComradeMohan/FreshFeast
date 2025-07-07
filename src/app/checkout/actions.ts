@@ -1,11 +1,13 @@
+
 'use server'
 
 import { db } from '@/lib/firebase'
-import { collection, getDocs, writeBatch, addDoc, serverTimestamp, doc, getDoc, query, where, limit, increment } from 'firebase/firestore'
+import { collection, getDocs, writeBatch, addDoc, serverTimestamp, doc, getDoc, query, where, limit, increment, updateDoc } from 'firebase/firestore'
 import { redirect } from 'next/navigation'
 import QRCode from 'qrcode'
 import { z } from 'zod'
 import { getShippingCharge as getChargeFromSettings } from '@/lib/settings'
+import { revalidatePath } from 'next/cache'
 
 export async function generateQrCode(amount: number) {
   const upiId = process.env.ADMIN_UPI_ID
@@ -44,6 +46,47 @@ const calculateDeliveryDates = (plan: 'weekly' | 'monthly', startDate: Date): st
     return dates.map(d => d.toISOString().split('T')[0]);
 };
 
+async function findAvailableAgentForArea(city: string): Promise<any | null> {
+    const areasRef = collection(db, 'serviceableAreas');
+    const areaQuery = query(areasRef, where('name', '==', city), limit(1));
+    const areaSnapshot = await getDocs(areaQuery);
+
+    if (areaSnapshot.empty) {
+        return null; // Area not serviceable
+    }
+
+    const areaDoc = areaSnapshot.docs[0].data();
+    const assignedAgentIds = areaDoc.assignedAgentIds || [];
+
+    if (assignedAgentIds.length === 0) {
+        return null; // No agents assigned to this area
+    }
+
+    // Firestore 'in' queries are limited to 30 values. This should be sufficient for now.
+    const agentsQuery = query(
+        collection(db, 'deliveryAgents'), 
+        where('uid', 'in', assignedAgentIds),
+        where('status', '==', 'approved')
+    );
+    const agentsSnapshot = await getDocs(agentsQuery);
+
+    if (agentsSnapshot.empty) {
+        return null; // No approved agents found from the assigned list
+    }
+
+    const agentsData = agentsSnapshot.docs.map(d => d.data());
+    
+    // Filter by capacity client-side (after fetching)
+    const eligibleAgents = agentsData.filter(agent => agent.activeOrderCount < agent.maxDeliveries);
+
+    if (eligibleAgents.length > 0) {
+        // Sort by who has the fewest active orders to balance the load
+        eligibleAgents.sort((a, b) => a.activeOrderCount - b.activeOrderCount);
+        return eligibleAgents[0]; // Return the agent with the least work
+    }
+
+    return null; // All assigned agents are at capacity
+}
 
 export async function createOrder(userId: string, deliveryInfo: any) {
     if (!userId) {
@@ -94,52 +137,21 @@ export async function createOrder(userId: string, deliveryInfo: any) {
             assignedAgentName: null,
         }
 
-        // --- Agent Assignment Logic ---
-        const areasRef = collection(db, 'serviceableAreas');
-        const areaQuery = query(areasRef, where('name', '==', deliveryInfo.city), limit(1));
-        const areaSnapshot = await getDocs(areaQuery);
-        
-        let chosenAgent: any = null;
+        const chosenAgent = await findAvailableAgentForArea(deliveryInfo.city);
+        const batch = writeBatch(db)
 
-        if (!areaSnapshot.empty) {
-            const areaDoc = areaSnapshot.docs[0].data();
-            const assignedAgentIds = areaDoc.assignedAgentIds || [];
-
-            if (assignedAgentIds.length > 0) {
-                const agentsQuery = query(collection(db, 'deliveryAgents'), where('uid', 'in', assignedAgentIds));
-                const agentsSnapshot = await getDocs(agentsQuery);
-                const agentsData = agentsSnapshot.docs.map(d => d.data());
-
-                const eligibleAgents = agentsData.filter(agent => agent.activeOrderCount < agent.maxDeliveries && agent.status === 'approved');
-
-                if (eligibleAgents.length > 0) {
-                    eligibleAgents.sort((a, b) => a.activeOrderCount - b.activeOrderCount);
-                    chosenAgent = eligibleAgents[0];
-                }
-            }
-        }
-        
-        // If an agent is found, update order data
         if (chosenAgent) {
             orderData.assignedAgentId = chosenAgent.uid;
             orderData.assignedAgentName = `${chosenAgent.firstName} ${chosenAgent.lastName}`;
             const plan = cartItems.some((item: any) => item.plan === 'monthly') ? 'monthly' : 'weekly';
             orderData.deliveryDates = calculateDeliveryDates(plan, new Date());
-        }
-        // --- End Agent Assignment Logic ---
 
-        const batch = writeBatch(db)
-
-        // 1. Create the order
-        batch.set(orderRef, orderData)
-        
-        // 2. If an agent was assigned, increment their active order count
-        if (chosenAgent) {
             const agentRef = doc(db, 'deliveryAgents', chosenAgent.uid);
             batch.update(agentRef, { activeOrderCount: increment(1) });
         }
-
-        // 3. Clear the user's cart
+        
+        batch.set(orderRef, orderData)
+        
         cartSnapshot.docs.forEach(doc => {
             batch.delete(doc.ref)
         })
@@ -153,6 +165,61 @@ export async function createOrder(userId: string, deliveryInfo: any) {
 
     redirect(`/order/confirmation?orderId=${orderId}`)
 }
+
+export async function processUnassignedOrders(): Promise<{ success: boolean; assignedCount?: number, error?: string }> {
+    try {
+        const unassignedOrdersQuery = query(
+            collection(db, 'orders'),
+            where('assignedAgentId', '==', null),
+            where('status', '==', 'Pending')
+        );
+        const unassignedOrdersSnapshot = await getDocs(unassignedOrdersQuery);
+
+        if (unassignedOrdersSnapshot.empty) {
+            return { success: true, assignedCount: 0 };
+        }
+
+        let assignedCount = 0;
+        const batch = writeBatch(db);
+
+        for (const orderDoc of unassignedOrdersSnapshot.docs) {
+            const orderData = orderDoc.data();
+            const chosenAgent = await findAvailableAgentForArea(orderData.deliveryInfo.city);
+
+            if (chosenAgent) {
+                const orderRef = doc(db, 'orders', orderDoc.id);
+                const agentRef = doc(db, 'deliveryAgents', chosenAgent.uid);
+
+                const plan = orderData.items.some((item: any) => item.plan === 'monthly') ? 'monthly' : 'weekly';
+                const deliveryDates = calculateDeliveryDates(plan, new Date());
+
+                batch.update(orderRef, {
+                    assignedAgentId: chosenAgent.uid,
+                    assignedAgentName: `${chosenAgent.firstName} ${chosenAgent.lastName}`,
+                    deliveryDates: deliveryDates,
+                });
+
+                batch.update(agentRef, { activeOrderCount: increment(1) });
+                assignedCount++;
+            }
+        }
+        
+        if (assignedCount > 0) {
+            await batch.commit();
+            console.log(`Successfully assigned ${assignedCount} orders.`);
+            revalidatePath('/admin/dashboard');
+            revalidatePath('/delivery/dashboard');
+        } else {
+            console.log("Found unassigned orders, but no available agents.");
+        }
+
+        return { success: true, assignedCount: assignedCount };
+    } catch (error) {
+        console.error("Error processing unassigned orders:", error);
+        return { success: false, error: 'Failed to process unassigned orders.' };
+    }
+}
+
 
 export async function getShippingCharge() {
     return await getChargeFromSettings();

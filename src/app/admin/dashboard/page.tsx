@@ -1,3 +1,4 @@
+
 'use client'
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -12,6 +13,8 @@ import { ShippingSettingsForm } from "@/components/admin/ShippingSettingsForm";
 import { Skeleton } from "@/components/ui/skeleton";
 import { db } from "@/lib/firebase";
 import { collection, onSnapshot, query, orderBy, limit, where } from "firebase/firestore";
+import { processUnassignedOrders } from "@/app/checkout/actions";
+import { useToast } from "@/hooks/use-toast";
 
 const statusVariant: { [key: string]: "default" | "secondary" | "destructive" | "outline" } = {
   'Pending': 'secondary',
@@ -37,6 +40,8 @@ export default function AdminDashboard() {
   const [shippingCharge, setShippingCharge] = useState<number | null>(null);
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
+  const { toast } = useToast();
+
 
   // Stats states
   const [totalRevenue, setTotalRevenue] = useState<number | string>('...');
@@ -48,6 +53,18 @@ export default function AdminDashboard() {
 
   useEffect(() => {
     getShippingCharge().then(setShippingCharge);
+
+    // Run the auto-assignment logic when an admin visits
+    const runOrderAssignment = async () => {
+        const result = await processUnassignedOrders();
+        if (result.success && result.assignedCount && result.assignedCount > 0) {
+            toast({
+                title: "Orders Assigned",
+                description: `${result.assignedCount} pending order(s) have been automatically assigned.`,
+            });
+        }
+    };
+    runOrderAssignment();
 
     // Recent Orders
     const q = query(collection(db, "orders"), orderBy("createdAt", "desc"), limit(5));
@@ -115,7 +132,7 @@ export default function AdminDashboard() {
       unsubscribePending();
       unsubscribeAreas();
     }
-  }, []);
+  }, [toast]);
 
   const stats = [
     { title: 'Total Revenue', value: totalRevenue, icon: DollarSign, href: null },
