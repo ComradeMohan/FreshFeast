@@ -60,7 +60,7 @@ export default function AddProductPage() {
       toast({
         variant: "destructive",
         title: "Error fetching products",
-        description: "Could not load existing packages from the database.",
+        description: error.message || "Could not load packages. Please check your Supabase table's Row Level Security policies.",
       })
     } else {
       setProducts(data as Product[])
