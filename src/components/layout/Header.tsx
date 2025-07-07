@@ -83,6 +83,7 @@ export function Header() {
 
   const agentNavLinks = [
     { href: '/delivery/dashboard', label: 'Dashboard' },
+    { href: '/delivery/daily-route', label: 'Daily Route' },
     { href: '/delivery/profile', label: 'Profile' },
   ];
 
