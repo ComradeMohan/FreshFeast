@@ -205,7 +205,7 @@ export default function ManageAreasPage() {
                                                             <AlertDialogTitle>Are you sure?</AlertDialogTitle>
                                                             <AlertDialogDescription>
                                                                 This will permanently delete this area. This action cannot be undone.
-                                                            </DAlertDialogDescription>
+                                                            </AlertDialogDescription>
                                                         </AlertDialogHeader>
                                                         <AlertDialogFooter>
                                                             <AlertDialogCancel>Cancel</AlertDialogCancel>
