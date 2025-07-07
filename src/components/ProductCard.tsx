@@ -11,7 +11,7 @@ import {
 } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { ShoppingCart } from 'lucide-react'
-import { useToast } from '@/hooks/use-toast'
+import { useCartBubble } from '@/hooks/use-cart-bubble'
 
 type Product = {
   id: string
@@ -27,13 +27,10 @@ type ProductCardProps = {
 }
 
 export function ProductCard({ product }: ProductCardProps) {
-  const { toast } = useToast()
+  const { setShowCartBubble } = useCartBubble()
 
   const handleAddToCart = () => {
-    toast({
-      title: "Added to cart!",
-      description: `${product.name} is now in your shopping cart.`,
-    })
+    setShowCartBubble(true)
   }
 
   return (
