@@ -100,7 +100,14 @@ export async function getServiceableAreas() {
         const areasRef = collection(db, 'serviceableAreas');
         const q = query(areasRef, orderBy('name', 'asc'));
         const querySnapshot = await getDocs(q);
-        return querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as {id: string, name: string, pincode: string}[];
+        return querySnapshot.docs.map(doc => {
+            const data = doc.data();
+            return {
+                id: doc.id,
+                name: data.name,
+                pincode: data.pincode,
+            };
+        }) as {id: string, name: string, pincode: string}[];
     } catch (error) {
         console.error("Error fetching serviceable areas:", error);
         return [];
