@@ -17,8 +17,8 @@ type Package = {
   id: string
   name: string
   description: string
-  price_weekly: string
-  price_monthly: string
+  price_weekly: number
+  price_monthly: number
   image: string
   hint: string
 }
@@ -55,7 +55,7 @@ export function ProductCard({ packageItem }: ProductCardProps) {
         <div className="w-full flex justify-between items-center">
             <div>
                 <p className="text-xs text-muted-foreground">Weekly</p>
-                <p className="text-lg font-bold text-primary">₹{packageItem.price_weekly}</p>
+                <p className="text-lg font-bold text-primary">₹{packageItem.price_weekly.toLocaleString()}</p>
             </div>
             <Button onClick={handleAddToCart} size="sm" className="bg-accent hover:bg-accent/90 text-accent-foreground">
                 <ShoppingCart className="mr-2 h-4 w-4" />
@@ -65,7 +65,7 @@ export function ProductCard({ packageItem }: ProductCardProps) {
          <div className="w-full flex justify-between items-center">
             <div>
                 <p className="text-xs text-muted-foreground">Monthly</p>
-                <p className="text-lg font-bold text-primary">₹{packageItem.price_monthly}</p>
+                <p className="text-lg font-bold text-primary">₹{packageItem.price_monthly.toLocaleString()}</p>
             </div>
             <Button onClick={handleAddToCart} size="sm" className="bg-accent hover:bg-accent/90 text-accent-foreground">
                 <ShoppingCart className="mr-2 h-4 w-4" />

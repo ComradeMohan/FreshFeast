@@ -3,6 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Users, Package, DollarSign, PlusCircle } from 'lucide-react';
+import Link from 'next/link';
 
 const stats = [
   { title: 'Total Revenue', value: '₹1,24,500', icon: DollarSign },
@@ -30,9 +31,11 @@ export default function AdminDashboard() {
             <h1 className="text-3xl font-headline font-bold tracking-tighter sm:text-4xl">Admin Dashboard</h1>
             <p className="text-muted-foreground mt-1">Manage your store, packages, and deliveries.</p>
         </div>
-        <Button>
+        <Button asChild>
+          <Link href="/admin/add-product">
             <PlusCircle className="mr-2 h-4 w-4" />
             Add New Package
+          </Link>
         </Button>
       </div>
 

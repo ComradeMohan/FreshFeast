@@ -2,6 +2,7 @@ import { initializeApp, getApps, getApp } from "firebase/app";
 import { getAuth, signOut } from "firebase/auth";
 import { getFirestore, doc, getDoc, updateDoc } from "firebase/firestore";
 import { getMessaging, getToken } from "firebase/messaging";
+import { getStorage } from "firebase/storage";
 
 const firebaseConfig = {
   apiKey: "AIzaSyAy4JPapi5_URS2E6aGEGjJwaBWgeR8fxA",
@@ -16,6 +17,7 @@ const firebaseConfig = {
 const app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
 const auth = getAuth(app);
 const db = getFirestore(app);
+const storage = getStorage(app);
 
 export const requestNotificationPermission = async (userId: string) => {
   if (typeof window === 'undefined' || !('serviceWorker' in navigator)) {
@@ -63,4 +65,4 @@ export const requestNotificationPermission = async (userId: string) => {
 };
 
 
-export { app, auth, db, signOut };
+export { app, auth, db, storage, signOut };
