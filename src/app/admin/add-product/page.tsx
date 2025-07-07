@@ -60,7 +60,7 @@ export default function AddProductPage() {
       toast({
         variant: "destructive",
         title: "Error fetching products",
-        description: error.message || "Could not load packages. Please check your Supabase table's Row Level Security policies.",
+        description: "Could not load packages. Please check your Supabase table's Row Level Security policies to ensure SELECT is allowed.",
       })
     } else {
       setProducts(data as Product[])
@@ -119,7 +119,7 @@ export default function AddProductPage() {
       toast({
         variant: "destructive",
         title: "Uh oh! Something went wrong.",
-        description: error.message || "There was a problem adding the new package. Please check your Supabase table's Row Level Security policies and ensure INSERT operations are allowed.",
+        description: "There was a problem adding the new package. Please check your Supabase table's Row Level Security policies and ensure INSERT operations are allowed for authenticated users.",
       })
     } finally {
       setIsSubmitting(false)
