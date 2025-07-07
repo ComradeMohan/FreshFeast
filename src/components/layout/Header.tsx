@@ -3,7 +3,7 @@
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet'
-import { Menu, ShoppingCart, Bell, LogOut } from 'lucide-react'
+import { Menu, ShoppingCart, Bell, LogOut, UserCircle } from 'lucide-react'
 import { Logo } from '@/components/Logo'
 import { useIsMobile } from '@/hooks/use-mobile'
 import { useAuthState } from 'react-firebase-hooks/auth'
@@ -14,6 +14,17 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/comp
 import { useRouter } from 'next/navigation'
 import { useCart } from '@/hooks/use-cart-bubble'
 import { doc, getDoc } from 'firebase/firestore'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuGroup,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
+
 
 export function Header() {
   const [hasMounted, setHasMounted] = useState(false);
@@ -48,6 +59,7 @@ export function Header() {
   }, [user]);
 
   const loggedInNavLinks = [
+      { href: '/profile', label: 'Profile' },
       { href: '/orders', label: 'My Orders' },
       { href: '/#packages', label: 'Our Packages' },
   ];
@@ -60,7 +72,6 @@ export function Header() {
   const loggedOutNavLinks = [
       { href: '/', label: 'Home' },
       { href: '/#packages', label: 'Our Packages' },
-      { href: '/careers', label: 'Careers' },
   ];
   
   const currentNavLinks = hasMounted && user ? (isAdmin ? adminNavLinks : loggedInNavLinks) : loggedOutNavLinks;
@@ -112,6 +123,7 @@ export function Header() {
     }
     
     if (user) {
+      const fallback = user.email ? user.email.charAt(0).toUpperCase() : 'U';
       return (
         <>
           {showNotificationButton && (
@@ -140,19 +152,39 @@ export function Header() {
                 <LogOut className="mr-2 h-4 w-4" /> Logout
             </Button>
           ) : (
-            <TooltipProvider>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button variant="ghost" size="icon" onClick={handleLogout}>
-                    <LogOut className="h-5 w-5 text-muted-foreground" />
-                    <span className="sr-only">Logout</span>
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent>
-                  <p>Logout</p>
-                </TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" className="relative h-10 w-10 rounded-full">
+                  <Avatar className="h-10 w-10">
+                    <AvatarFallback>{fallback}</AvatarFallback>
+                  </Avatar>
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent className="w-56" align="end" forceMount>
+                <DropdownMenuLabel className="font-normal">
+                  <div className="flex flex-col space-y-1">
+                    <p className="text-sm font-medium leading-none">My Account</p>
+                    <p className="text-xs leading-none text-muted-foreground">
+                      {user.email}
+                    </p>
+                  </div>
+                </DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                <DropdownMenuGroup>
+                  <DropdownMenuItem asChild>
+                    <Link href="/profile">
+                      <UserCircle className="mr-2 h-4 w-4" />
+                      <span>Profile</span>
+                    </Link>
+                  </DropdownMenuItem>
+                </DropdownMenuGroup>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={handleLogout}>
+                  <LogOut className="mr-2 h-4 w-4" />
+                  <span>Log out</span>
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           )}
         </>
       )
