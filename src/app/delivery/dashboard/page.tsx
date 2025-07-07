@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { useAuthState } from 'react-firebase-hooks/auth';
 import { auth } from '@/lib/firebase';
 import { getAssignedOrders, updateOrderStatus, AssignedOrder } from './actions';
+import { format } from 'date-fns';
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -96,7 +97,7 @@ export default function DeliveryDashboard() {
         </div>
         <div className="flex items-center gap-2 text-sm text-muted-foreground">
             <Clock className="h-4 w-4" />
-            <span>Today's Schedule: {new Date().toLocaleDateString()}</span>
+            <span>Today's Schedule: {format(new Date(), 'MMMM d, yyyy')}</span>
         </div>
       </div>
 

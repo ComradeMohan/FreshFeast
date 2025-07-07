@@ -28,26 +28,31 @@ export async function getAssignedOrders(agentId: string): Promise<AssignedOrder[
 
     try {
         const ordersRef = collection(db, 'orders');
+        // Query for all orders assigned to the agent, ordered by creation date.
+        // This avoids a complex composite index on (assignedAgentId, status, createdAt)
+        // and is more reliable.
         const ordersQuery = query(
             ordersRef, 
             where('assignedAgentId', '==', agentId),
-            where('status', 'in', ['Pending', 'Out for Delivery']),
             orderBy('createdAt', 'desc')
         );
         const ordersSnapshot = await getDocs(ordersQuery);
 
-        const orders = ordersSnapshot.docs.map(doc => {
-            const data = doc.data();
-            return {
-                id: doc.id,
-                userName: data.userName,
-                status: data.status,
-                total: data.total,
-                createdAt: data.createdAt ? format(data.createdAt.toDate(), 'MMMM d, yyyy') : 'N/A',
-                items: data.items,
-                deliveryInfo: data.deliveryInfo,
-            } as AssignedOrder;
-        });
+        // Filter the orders in code to only include active ones ('Pending' or 'Out for Delivery').
+        const orders = ordersSnapshot.docs
+            .map(doc => {
+                const data = doc.data();
+                return {
+                    id: doc.id,
+                    userName: data.userName,
+                    status: data.status,
+                    total: data.total,
+                    createdAt: data.createdAt ? format(data.createdAt.toDate(), 'MMMM d, yyyy') : 'N/A',
+                    items: data.items,
+                    deliveryInfo: data.deliveryInfo,
+                } as AssignedOrder;
+            })
+            .filter(order => order.status === 'Pending' || order.status === 'Out for Delivery');
 
         return orders;
     } catch (error) {
