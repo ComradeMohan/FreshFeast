@@ -1,7 +1,7 @@
 'use server'
 
 import { db } from '@/lib/firebase'
-import { collection, getDocs, writeBatch, addDoc, serverTimestamp } from 'firebase/firestore'
+import { collection, getDocs, writeBatch, addDoc, serverTimestamp, doc, getDoc } from 'firebase/firestore'
 import { redirect } from 'next/navigation'
 import QRCode from 'qrcode'
 import { z } from 'zod'
@@ -41,6 +41,10 @@ export async function createOrder(userId: string, deliveryInfo: any) {
             throw new Error('Your cart is empty.')
         }
 
+        const userDocRef = doc(db, 'users', userId);
+        const userDocSnap = await getDoc(userDocRef);
+        const userName = userDocSnap.exists() ? `${userDocSnap.data().firstName} ${userDocSnap.data().lastName}` : 'Guest User';
+
         const cartItems = cartSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }))
         const subtotal = cartItems.reduce((acc, item: any) => acc + item.price * item.quantity, 0)
         const shipping = cartItems.length > 0 ? await getChargeFromSettings() : 0;
@@ -48,12 +52,13 @@ export async function createOrder(userId: string, deliveryInfo: any) {
 
         const orderData = {
             userId,
+            userName,
             deliveryInfo,
             items: cartItems,
             subtotal,
             shipping,
             total,
-            status: 'processing',
+            status: 'Pending',
             createdAt: serverTimestamp(),
         }
 

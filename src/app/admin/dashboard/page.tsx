@@ -10,31 +10,51 @@ import { useEffect, useState } from "react";
 import { getShippingCharge } from "@/lib/settings";
 import { ShippingSettingsForm } from "@/components/admin/ShippingSettingsForm";
 import { Skeleton } from "@/components/ui/skeleton";
-
-const stats = [
-  { title: 'Total Revenue', value: '₹1,24,500', icon: DollarSign },
-  { title: 'Active Orders', value: '125', icon: Package },
-  { title: 'Delivery Agents', value: '12', icon: Users },
-]
-
-const recentOrders = [
-  { id: '#FFH12345', customer: 'John Doe', status: 'Delivered', total: '₹6,498' },
-  { id: '#FFH12346', customer: 'Jane Smith', status: 'Pending', total: '₹2,999' },
-  { id: '#FFH12347', customer: 'Bob Johnson', status: 'Out for Delivery', total: '₹3,999' },
-];
+import { db } from "@/lib/firebase";
+import { collection, onSnapshot, query, orderBy, limit } from "firebase/firestore";
 
 const statusVariant: { [key: string]: "default" | "secondary" | "destructive" | "outline" } = {
   'Pending': 'secondary',
   'Out for Delivery': 'default',
   'Delivered': 'outline',
+  'processing': 'secondary', // For legacy orders
 };
+
+type Order = {
+    id: string;
+    userName: string;
+    status: string;
+    total: number;
+    createdAt: any;
+}
 
 export default function AdminDashboard() {
   const [shippingCharge, setShippingCharge] = useState<number | null>(null);
+  const [orders, setOrders] = useState<Order[]>([]);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     getShippingCharge().then(setShippingCharge);
+
+    const q = query(collection(db, "orders"), orderBy("createdAt", "desc"), limit(5));
+    const unsubscribe = onSnapshot(q, (querySnapshot) => {
+      const ordersData = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Order));
+      setOrders(ordersData);
+      setLoading(false);
+    }, (error) => {
+      console.error("Error fetching recent orders:", error);
+      setLoading(false);
+    });
+
+    return () => unsubscribe();
   }, []);
+
+  // Placeholder stats data, can be wired up to real data in a future step
+  const stats = [
+    { title: 'Total Revenue', value: '...', icon: DollarSign },
+    { title: 'Active Orders', value: '...', icon: Package },
+    { title: 'Delivery Agents', value: '...', icon: Users },
+  ]
 
   return (
     <div className="container mx-auto px-4 py-12 md:py-16">
@@ -59,7 +79,7 @@ export default function AdminDashboard() {
               <stat.icon className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{stat.value}</div>
+              {loading ? <Skeleton className="h-8 w-24" /> : <div className="text-2xl font-bold">{stat.value}</div>}
             </CardContent>
           </Card>
         ))}
@@ -100,16 +120,31 @@ export default function AdminDashboard() {
                       </TableRow>
                   </TableHeader>
                   <TableBody>
-                      {recentOrders.map(order => (
-                          <TableRow key={order.id}>
-                              <TableCell className="font-mono">{order.id}</TableCell>
-                              <TableCell>{order.customer}</TableCell>
-                              <TableCell>
-                                  <Badge variant={statusVariant[order.status] || 'secondary'}>{order.status}</Badge>
-                              </TableCell>
-                              <TableCell className="text-right">{order.total}</TableCell>
-                          </TableRow>
-                      ))}
+                      {loading ? (
+                        Array.from({ length: 3 }).map((_, i) => (
+                           <TableRow key={i}>
+                                <TableCell><Skeleton className="h-5 w-24" /></TableCell>
+                                <TableCell><Skeleton className="h-5 w-32" /></TableCell>
+                                <TableCell><Skeleton className="h-6 w-20" /></TableCell>
+                                <TableCell className="text-right"><Skeleton className="h-5 w-16 ml-auto" /></TableCell>
+                           </TableRow>
+                        ))
+                      ) : orders.length > 0 ? (
+                        orders.map(order => (
+                            <TableRow key={order.id}>
+                                <TableCell className="font-mono">#{order.id.slice(0, 8)}...</TableCell>
+                                <TableCell>{order.userName}</TableCell>
+                                <TableCell>
+                                    <Badge variant={statusVariant[order.status] || 'secondary'}>{order.status}</Badge>
+                                </TableCell>
+                                <TableCell className="text-right">₹{order.total.toFixed(2)}</TableCell>
+                            </TableRow>
+                        ))
+                      ) : (
+                        <TableRow>
+                            <TableCell colSpan={4} className="text-center text-muted-foreground">No recent orders.</TableCell>
+                        </TableRow>
+                      )}
                   </TableBody>
               </Table>
           </CardContent>

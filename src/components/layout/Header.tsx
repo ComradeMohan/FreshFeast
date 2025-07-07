@@ -7,18 +7,20 @@ import { Menu, ShoppingCart, Bell, LogOut } from 'lucide-react'
 import { Logo } from '@/components/Logo'
 import { useIsMobile } from '@/hooks/use-mobile'
 import { useAuthState } from 'react-firebase-hooks/auth'
-import { auth, requestNotificationPermission, signOut } from '@/lib/firebase'
+import { auth, requestNotificationPermission, signOut, db } from '@/lib/firebase'
 import { useToast } from '@/hooks/use-toast'
 import React, { useState, useEffect } from 'react'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { useRouter } from 'next/navigation'
 import { useCart } from '@/hooks/use-cart-bubble'
+import { doc, getDoc } from 'firebase/firestore'
 
 export function Header() {
   const [hasMounted, setHasMounted] = useState(false);
   const isMobile = useIsMobile()
   const router = useRouter()
   const [user, loading] = useAuthState(auth)
+  const [isAdmin, setIsAdmin] = useState(false)
   const { toast } = useToast()
   const [showNotificationButton, setShowNotificationButton] = useState(false)
   const [isSheetOpen, setIsSheetOpen] = useState(false)
@@ -28,7 +30,30 @@ export function Header() {
     setHasMounted(true);
   }, []);
 
+  useEffect(() => {
+    const checkAdminStatus = async () => {
+      if (user) {
+        const userDocRef = doc(db, "users", user.uid);
+        const userDocSnap = await getDoc(userDocRef);
+        if (userDocSnap.exists() && userDocSnap.data().role === 'admin') {
+          setIsAdmin(true);
+        } else {
+          setIsAdmin(false);
+        }
+      } else {
+        setIsAdmin(false);
+      }
+    };
+    checkAdminStatus();
+  }, [user]);
+
   const loggedInNavLinks = [
+      { href: '/#packages', label: 'Our Packages' },
+      { href: '/careers', label: 'Careers' },
+  ];
+
+  const adminNavLinks = [
+      { href: '/admin/dashboard', label: 'Dashboard' },
       { href: '/#packages', label: 'Our Packages' },
       { href: '/careers', label: 'Careers' },
   ];
@@ -39,7 +64,7 @@ export function Header() {
       { href: '/careers', label: 'Careers' },
   ];
   
-  const currentNavLinks = hasMounted && user ? loggedInNavLinks : loggedOutNavLinks;
+  const currentNavLinks = hasMounted && user ? (isAdmin ? adminNavLinks : loggedInNavLinks) : loggedOutNavLinks;
 
   useEffect(() => {
     if (hasMounted && user && typeof window !== 'undefined' && 'Notification' in window) {
