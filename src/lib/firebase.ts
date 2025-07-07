@@ -1,6 +1,6 @@
 import { initializeApp, getApps, getApp } from "firebase/app";
 import { getAuth, signOut } from "firebase/auth";
-import { getFirestore, doc, getDoc, updateDoc } from "firebase/firestore";
+import { getFirestore, doc, getDoc, updateDoc, collection, onSnapshot, setDoc, deleteDoc, increment } from "firebase/firestore";
 import { getMessaging, getToken } from "firebase/messaging";
 import { getStorage } from "firebase/storage";
 

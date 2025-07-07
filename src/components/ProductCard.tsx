@@ -29,6 +29,20 @@ type ProductCardProps = {
 export function ProductCard({ packageItem }: ProductCardProps) {
   const { addToCart } = useCart()
 
+  const handleAddToCart = (plan: 'weekly' | 'monthly') => {
+    const price = plan === 'weekly' ? packageItem.price_weekly : packageItem.price_monthly;
+    const cartItem = {
+      productId: packageItem.id,
+      name: packageItem.file_name,
+      description: packageItem.description,
+      imageUrl: packageItem.file_url,
+      plan: plan,
+      price: price,
+      quantity: 1,
+    };
+    addToCart(cartItem);
+  };
+
   return (
     <Card className="flex flex-col overflow-hidden h-full">
       <CardHeader className="p-0">
@@ -52,7 +66,7 @@ export function ProductCard({ packageItem }: ProductCardProps) {
                 <p className="text-xs text-muted-foreground">Weekly</p>
                 <p className="text-lg font-bold text-primary">₹{packageItem.price_weekly.toLocaleString()}</p>
             </div>
-            <Button onClick={addToCart} size="sm" className="bg-accent hover:bg-accent/90 text-accent-foreground">
+            <Button onClick={() => handleAddToCart('weekly')} size="sm" className="bg-accent hover:bg-accent/90 text-accent-foreground">
                 <ShoppingCart className="mr-2 h-4 w-4" />
                 Add
             </Button>
@@ -62,7 +76,7 @@ export function ProductCard({ packageItem }: ProductCardProps) {
                 <p className="text-xs text-muted-foreground">Monthly</p>
                 <p className="text-lg font-bold text-primary">₹{packageItem.price_monthly.toLocaleString()}</p>
             </div>
-            <Button onClick={addToCart} size="sm" className="bg-accent hover:bg-accent/90 text-accent-foreground">
+            <Button onClick={() => handleAddToCart('monthly')} size="sm" className="bg-accent hover:bg-accent/90 text-accent-foreground">
                 <ShoppingCart className="mr-2 h-4 w-4" />
                 Add
             </Button>

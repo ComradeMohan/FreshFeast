@@ -1,3 +1,5 @@
+'use client'
+
 import Link from 'next/link'
 import Image from 'next/image'
 import { Button } from '@/components/ui/button'
@@ -5,32 +7,64 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Separator } from '@/components/ui/separator'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
-import { Trash2, ArrowRight } from 'lucide-react'
-
-const cartItems = [
-  {
-    id: '1',
-    name: 'Tropical Paradise Box (Monthly)',
-    price: 4499,
-    quantity: 1,
-    image: 'https://placehold.co/600x400',
-    hint: 'tropical fruit',
-  },
-  {
-    id: '2',
-    name: 'Berry Bliss Box (Weekly)',
-    price: 1099,
-    quantity: 2,
-    image: 'https://placehold.co/600x400',
-    hint: 'fresh berries',
-  },
-];
-
-const subtotal = cartItems.reduce((acc, item) => acc + item.price * item.quantity, 0);
-const shipping = 50.00;
-const total = subtotal + shipping;
+import { Trash2, ArrowRight, LoaderCircle, ShoppingCart } from 'lucide-react'
+import { useCart } from '@/hooks/use-cart-bubble'
+import { useAuthState } from 'react-firebase-hooks/auth'
+import { auth } from '@/lib/firebase'
+import React from 'react'
 
 export default function CartPage() {
+  const [user] = useAuthState(auth)
+  const { cartItems, loading, removeFromCart, updateItemQuantity } = useCart()
+
+  const handleQuantityChange = (itemId: string, currentQuantity: number, change: number) => {
+    const newQuantity = currentQuantity + change
+    if (newQuantity > 0) {
+      updateItemQuantity(itemId, newQuantity)
+    }
+  }
+
+  const subtotal = React.useMemo(() => {
+    return cartItems.reduce((acc, item) => acc + item.price * item.quantity, 0)
+  }, [cartItems])
+
+  const shipping = cartItems.length > 0 ? 50.00 : 0;
+  const total = subtotal + shipping
+
+  if (loading) {
+    return (
+      <div className="container mx-auto flex justify-center items-center h-[calc(100vh-15rem)]">
+        <LoaderCircle className="h-12 w-12 animate-spin text-primary" />
+      </div>
+    )
+  }
+
+  if (!user) {
+     return (
+      <div className="container mx-auto px-4 py-12 md:py-24 text-center">
+        <h1 className="text-3xl font-headline font-bold">Your Cart is Empty</h1>
+        <p className="text-muted-foreground mt-4">Please log in to see your cart and add items.</p>
+        <Button asChild className="mt-6">
+          <Link href="/login">Login</Link>
+        </Button>
+      </div>
+    )
+  }
+
+  if (cartItems.length === 0) {
+    return (
+      <div className="container mx-auto px-4 py-12 md:py-24 text-center">
+        <ShoppingCart className="mx-auto h-16 w-16 text-muted-foreground" />
+        <h1 className="text-3xl font-headline font-bold mt-6">Your Cart is Empty</h1>
+        <p className="text-muted-foreground mt-2">Looks like you haven't added any packages yet.</p>
+        <Button asChild className="mt-6">
+          <Link href="/#packages">Browse Packages</Link>
+        </Button>
+      </div>
+    )
+  }
+
+
   return (
     <div className="container mx-auto px-4 py-12 md:py-24">
       <h1 className="text-3xl font-headline font-bold tracking-tighter text-center sm:text-4xl md:text-5xl">
@@ -55,21 +89,27 @@ export default function CartPage() {
                     <TableRow key={item.id}>
                       <TableCell>
                         <Image
-                          src={item.image}
+                          src={item.imageUrl}
                           alt={item.name}
                           width={80}
                           height={80}
                           className="rounded-md object-cover"
-                          data-ai-hint={item.hint}
                         />
                       </TableCell>
-                      <TableCell className="font-medium">{item.name}</TableCell>
                       <TableCell>
-                        <Input type="number" defaultValue={item.quantity} className="w-16 text-center" />
+                        <p className="font-medium">{item.name}</p>
+                        <p className="text-sm text-muted-foreground capitalize">{item.plan}</p>
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex items-center justify-center gap-2">
+                           <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => handleQuantityChange(item.id, item.quantity, -1)}>-</Button>
+                           <Input type="number" value={item.quantity} readOnly className="w-16 h-8 text-center" />
+                           <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => handleQuantityChange(item.id, item.quantity, 1)}>+</Button>
+                        </div>
                       </TableCell>
                       <TableCell className="text-right">₹{(item.price * item.quantity).toFixed(2)}</TableCell>
                       <TableCell>
-                        <Button variant="ghost" size="icon">
+                        <Button variant="ghost" size="icon" onClick={() => removeFromCart(item.id)}>
                           <Trash2 className="h-4 w-4 text-muted-foreground" />
                         </Button>
                       </TableCell>
