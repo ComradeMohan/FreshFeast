@@ -1,14 +1,13 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
+import Image from 'next/image'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
-import { ref, uploadBytes, getDownloadURL } from 'firebase/storage'
-import { collection, addDoc } from 'firebase/firestore'
-import { db, storage } from '@/lib/firebase'
+import { supabase } from '@/lib/supabase'
 
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -17,6 +16,7 @@ import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { useToast } from '@/hooks/use-toast'
 import { ArrowLeft, LoaderCircle } from 'lucide-react'
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 
 const formSchema = z.object({
   name: z.string().min(1, { message: "Package name is required" }),
@@ -26,10 +26,21 @@ const formSchema = z.object({
   image: z.any().refine((files) => files?.length == 1, "Image is required."),
 })
 
+// Define a type for the product from Supabase
+type Product = {
+  id: string
+  name: string
+  image_url: string
+  price_weekly: number
+  price_monthly: number
+}
+
 export default function AddProductPage() {
   const router = useRouter()
   const { toast } = useToast()
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [products, setProducts] = useState<Product[]>([])
+  const [imagePreview, setImagePreview] = useState<string | null>(null)
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -41,40 +52,95 @@ export default function AddProductPage() {
     },
   })
 
+  // Fetch products from Supabase
+  const fetchProducts = async () => {
+    const { data, error } = await supabase.from('products').select('*').order('created_at', { ascending: false });
+    if (error) {
+      console.error('Error fetching products:', error)
+      toast({
+        variant: "destructive",
+        title: "Error fetching products",
+        description: "Could not load existing packages from the database.",
+      })
+    } else {
+      setProducts(data as Product[])
+    }
+  }
+
+  useEffect(() => {
+    fetchProducts()
+  }, [])
+
   async function onSubmit(values: z.infer<typeof formSchema>) {
     setIsSubmitting(true)
     try {
       const imageFile = values.image[0];
-      const storageRef = ref(storage, `products/${Date.now()}_${imageFile.name}`);
-      const uploadResult = await uploadBytes(storageRef, imageFile);
-      const imageUrl = await getDownloadURL(uploadResult.ref);
+      const filePath = `products/${Date.now()}_${imageFile.name}`;
 
-      await addDoc(collection(db, "products"), {
+      // 1. Upload image to Supabase Storage
+      const { error: uploadError } = await supabase.storage
+        .from('products')
+        .upload(filePath, imageFile);
+
+      if (uploadError) {
+        throw uploadError;
+      }
+
+      // 2. Get the public URL of the uploaded image
+      const { data: urlData } = supabase.storage
+        .from('products')
+        .getPublicUrl(filePath);
+      
+      const imageUrl = urlData.publicUrl;
+
+      // 3. Insert product data into Supabase table
+      const { error: insertError } = await supabase.from('products').insert({
         name: values.name,
         description: values.description,
         price_weekly: values.price_weekly,
         price_monthly: values.price_monthly,
-        image: imageUrl,
-        hint: 'fruit box', // default hint
-        createdAt: new Date(),
+        image_url: imageUrl,
+        hint: 'fruit box' // default hint
       });
+
+      if (insertError) {
+        throw insertError;
+      }
 
       toast({
         title: "Package added successfully!",
         description: "The new package is now available for customers.",
       })
-      router.push('/admin/dashboard')
-    } catch (error) {
+      form.reset();
+      setImagePreview(null);
+      await fetchProducts(); // Refresh the product list
+      
+    } catch (error: any) {
       console.error("Error adding product:", error)
       toast({
         variant: "destructive",
         title: "Uh oh! Something went wrong.",
-        description: "There was a problem adding the new package.",
+        description: error.message || "There was a problem adding the new package.",
       })
     } finally {
-        setIsSubmitting(false)
+      setIsSubmitting(false)
     }
   }
+
+  const handleImageChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setImagePreview(reader.result as string);
+      };
+      reader.readAsDataURL(file);
+      form.setValue("image", event.target.files);
+    } else {
+        setImagePreview(null);
+        form.setValue("image", null);
+    }
+  };
   
   return (
      <div className="container mx-auto px-4 py-12 md:py-16">
@@ -150,27 +216,67 @@ export default function AddProductPage() {
               <FormField
                 control={form.control}
                 name="image"
-                render={({ field: { onChange, value, ...rest } }) => (
+                render={({ field }) => (
                   <FormItem>
                     <FormLabel>Package Image</FormLabel>
                     <FormControl>
                       <Input 
                         type="file" 
                         accept="image/*"
-                        onChange={(e) => onChange(e.target.files)}
-                        {...rest} 
+                        onChange={handleImageChange}
                       />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
                 )}
               />
+              
+              {imagePreview && (
+                <div className="mt-4">
+                    <p className="text-sm font-medium mb-2">Image Preview:</p>
+                    <Image src={imagePreview} alt="Image preview" width={200} height={200} className="rounded-md object-cover" />
+                </div>
+              )}
+
 
               <Button type="submit" className="w-full sm:w-auto" disabled={isSubmitting}>
                 {isSubmitting ? <LoaderCircle className="animate-spin" /> : "Add Package"}
               </Button>
             </form>
           </Form>
+        </CardContent>
+      </Card>
+      
+      <Card className="mt-12">
+        <CardHeader>
+            <CardTitle>Existing Packages</CardTitle>
+            <CardDescription>A list of packages currently in your store.</CardDescription>
+        </CardHeader>
+        <CardContent>
+            <Table>
+                <TableHeader>
+                    <TableRow>
+                        <TableHead>Image</TableHead>
+                        <TableHead>Name</TableHead>
+                        <TableHead>Public URL</TableHead>
+                    </TableRow>
+                </TableHeader>
+                <TableBody>
+                    {products.map(product => (
+                        <TableRow key={product.id}>
+                            <TableCell>
+                                <Image src={product.image_url} alt={product.name} width={64} height={64} className="rounded-md object-cover"/>
+                            </TableCell>
+                            <TableCell>{product.name}</TableCell>
+                            <TableCell>
+                                <Link href={product.image_url} target="_blank" rel="noopener noreferrer" className="text-sm underline">
+                                    View URL
+                                </Link>
+                            </TableCell>
+                        </TableRow>
+                    ))}
+                </TableBody>
+            </Table>
         </CardContent>
       </Card>
     </div>

@@ -19,7 +19,7 @@ type Package = {
   description: string
   price_weekly: number
   price_monthly: number
-  image: string
+  image_url: string
   hint: string
 }
 
@@ -39,7 +39,7 @@ export function ProductCard({ packageItem }: ProductCardProps) {
       <CardHeader className="p-0">
         <div className="aspect-video relative">
           <Image
-            src={packageItem.image}
+            src={packageItem.image_url}
             alt={packageItem.name}
             fill
             className="object-cover"

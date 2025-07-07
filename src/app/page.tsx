@@ -6,8 +6,8 @@ import { Button } from '@/components/ui/button'
 import { ProductCard } from '@/components/ProductCard'
 import { ArrowRight, LoaderCircle } from 'lucide-react'
 import { useAuthState } from 'react-firebase-hooks/auth'
-import { auth, db } from '@/lib/firebase'
-import { collection, getDocs, query, orderBy } from 'firebase/firestore'
+import { auth } from '@/lib/firebase'
+import { supabase } from '@/lib/supabase'
 import { cn } from '@/lib/utils'
 
 type Package = {
@@ -16,7 +16,7 @@ type Package = {
   description: string
   price_weekly: number
   price_monthly: number
-  image: string
+  image_url: string
   hint: string
 }
 
@@ -28,11 +28,16 @@ export default function Home() {
   useEffect(() => {
     const fetchPackages = async () => {
       try {
-        const packagesCollection = collection(db, 'products')
-        const q = query(packagesCollection, orderBy('createdAt', 'desc'))
-        const querySnapshot = await getDocs(q)
-        const packagesData = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as Package[]
-        setPackages(packagesData)
+        const { data, error } = await supabase
+          .from('products')
+          .select('*')
+          .order('created_at', { ascending: false });
+
+        if (error) {
+          throw error;
+        }
+        
+        setPackages(data as Package[])
       } catch (error) {
         console.error("Error fetching packages: ", error);
       } finally {
