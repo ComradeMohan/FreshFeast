@@ -1,7 +1,7 @@
 'use server'
 
 import { db } from '@/lib/firebase'
-import { collection, getDocs, writeBatch, addDoc, serverTimestamp, doc, getDoc } from 'firebase/firestore'
+import { collection, getDocs, writeBatch, addDoc, serverTimestamp, doc, getDoc, query, orderBy } from 'firebase/firestore'
 import { redirect } from 'next/navigation'
 import QRCode from 'qrcode'
 import { z } from 'zod'
@@ -93,4 +93,16 @@ export async function createOrder(userId: string, deliveryInfo: any) {
 
 export async function getShippingCharge() {
     return await getChargeFromSettings();
+}
+
+export async function getServiceableAreas() {
+    try {
+        const areasRef = collection(db, 'serviceableAreas');
+        const q = query(areasRef, orderBy('name', 'asc'));
+        const querySnapshot = await getDocs(q);
+        return querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as {id: string, name: string, pincode: string}[];
+    } catch (error) {
+        console.error("Error fetching serviceable areas:", error);
+        return [];
+    }
 }

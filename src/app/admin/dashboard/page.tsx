@@ -4,7 +4,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { Users, Package, DollarSign, PlusCircle, UserCheck } from 'lucide-react';
+import { Users, Package, DollarSign, PlusCircle, UserCheck, MapPin } from 'lucide-react';
 import Link from 'next/link';
 import { useEffect, useState } from "react";
 import { getShippingCharge } from "@/lib/settings";
@@ -40,6 +40,7 @@ export default function AdminDashboard() {
   const [activeOrdersCount, setActiveOrdersCount] = useState<number | string>('...');
   const [deliveryAgentsCount, setDeliveryAgentsCount] = useState<number | string>('...');
   const [pendingAgentsCount, setPendingAgentsCount] = useState<number | string>('...');
+  const [serviceableAreasCount, setServiceableAreasCount] = useState<number | string>('...');
 
 
   useEffect(() => {
@@ -93,6 +94,15 @@ export default function AdminDashboard() {
       setPendingAgentsCount(0);
     })
 
+    // Serviceable Areas Count
+    const areasQuery = query(collection(db, "serviceableAreas"));
+    const unsubscribeAreas = onSnapshot(areasQuery, (snapshot) => {
+        setServiceableAreasCount(snapshot.size);
+    }, (error) => {
+        console.error("Error fetching serviceable areas count:", error);
+        setServiceableAreasCount(0);
+    });
+
 
     return () => {
       unsubscribeRecent();
@@ -100,6 +110,7 @@ export default function AdminDashboard() {
       unsubscribeRevenue();
       unsubscribeAgents();
       unsubscribePending();
+      unsubscribeAreas();
     }
   }, []);
 
@@ -108,6 +119,7 @@ export default function AdminDashboard() {
     { title: 'Active Orders', value: activeOrdersCount, icon: Package, href: null },
     { title: 'Delivery Agents', value: deliveryAgentsCount, icon: Users, href: '/admin/agents' },
     { title: 'Pending Agents', value: pendingAgentsCount, icon: UserCheck, href: '/admin/agents' },
+    { title: 'Serviceable Areas', value: serviceableAreasCount, icon: MapPin, href: '/admin/areas' },
   ]
 
   const StatCard = ({ title, value, icon: Icon, href }: { title: string, value: number | string, icon: React.ElementType, href: string | null }) => {
@@ -133,7 +145,13 @@ export default function AdminDashboard() {
             <h1 className="text-3xl font-headline font-bold tracking-tighter sm:text-4xl">Admin Dashboard</h1>
             <p className="text-muted-foreground mt-1">Manage your store, packages, and deliveries.</p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
+            <Button asChild>
+              <Link href="/admin/areas">
+                <MapPin className="mr-2 h-4 w-4" />
+                Manage Areas
+              </Link>
+            </Button>
             <Button asChild>
               <Link href="/admin/agents">
                 <Users className="mr-2 h-4 w-4" />
@@ -149,7 +167,7 @@ export default function AdminDashboard() {
         </div>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4 mb-8">
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5 mb-8">
         {stats.map(stat => (
           <StatCard key={stat.title} title={stat.title} value={stat.value} icon={stat.icon} href={stat.href} />
         ))}

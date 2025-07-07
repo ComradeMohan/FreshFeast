@@ -19,12 +19,18 @@ import { useAuthState } from 'react-firebase-hooks/auth'
 import { auth } from '@/lib/firebase'
 import { useRouter } from 'next/navigation'
 import { useToast } from '@/hooks/use-toast'
-import { generateQrCode, createOrder, getShippingCharge } from './actions'
+import { generateQrCode, createOrder, getShippingCharge, getServiceableAreas } from './actions'
 import { Skeleton } from '@/components/ui/skeleton'
+
+type Area = {
+  id: string
+  name: string
+  pincode: string
+}
 
 const deliveryInfoSchema = z.object({
   address: z.string().min(1, 'Address is required.'),
-  city: z.string().min(1, 'City is required.'),
+  city: z.string().min(1, 'Please select a serviceable city/area.'),
   state: z.string().min(1, 'State is required.'),
   zip: z.string().min(1, 'ZIP code is required.'),
   digipin: z.string().min(1, 'DigiPIN is required.'),
@@ -41,6 +47,7 @@ export default function CheckoutPage() {
   const [qrError, setQrError] = useState<string | null>(null)
   const [qrLoading, setQrLoading] = useState(true)
   const [shipping, setShipping] = React.useState<number | null>(null)
+  const [areas, setAreas] = useState<Area[]>([])
 
   const form = useForm<z.infer<typeof deliveryInfoSchema>>({
     resolver: zodResolver(deliveryInfoSchema),
@@ -48,6 +55,17 @@ export default function CheckoutPage() {
       address: '', city: '', state: '', zip: '', digipin: '', deliveryTime: ''
     },
   })
+  
+  // Set pincode and state when area is selected
+  const selectedAreaName = form.watch('city')
+  useEffect(() => {
+    const selectedArea = areas.find(area => area.name === selectedAreaName);
+    if (selectedArea) {
+      form.setValue('zip', selectedArea.pincode, { shouldValidate: true });
+      form.setValue('state', 'Maharashtra', { shouldValidate: true }); // Assuming all areas are in MH for now
+    }
+  }, [selectedAreaName, areas, form]);
+
 
   const subtotal = React.useMemo(() => {
     return cartItems.reduce((acc, item) => acc + item.price * item.quantity, 0)
@@ -61,7 +79,7 @@ export default function CheckoutPage() {
     }
   }, [user, authLoading, router]);
 
-  React.useEffect(() => {
+  useEffect(() => {
     async function fetchShippingCharge() {
       if (cartItems.length > 0 && !cartLoading) {
         try {
@@ -77,6 +95,10 @@ export default function CheckoutPage() {
     }
     fetchShippingCharge();
   }, [cartItems.length, cartLoading]);
+
+  useEffect(() => {
+    getServiceableAreas().then(setAreas);
+  }, []);
 
   useEffect(() => {
     if (total !== null && total > 0) {
@@ -154,13 +176,28 @@ export default function CheckoutPage() {
                       )} />
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <FormField control={form.control} name="city" render={({ field }) => (
-                            <FormItem><FormLabel>City</FormLabel><FormControl><Input placeholder="Fruityville" {...field} /></FormControl><FormMessage /></FormItem>
+                            <FormItem>
+                                <FormLabel>City / Area</FormLabel>
+                                <Select onValueChange={field.onChange} defaultValue={field.value}>
+                                    <FormControl>
+                                        <SelectTrigger><SelectValue placeholder="Select a delivery area" /></SelectTrigger>
+                                    </FormControl>
+                                    <SelectContent>
+                                        {areas.length > 0 ? areas.map(area => (
+                                            <SelectItem key={area.id} value={area.name}>{area.name}</SelectItem>
+                                        )) : (
+                                            <SelectItem value="none" disabled>No serviceable areas found.</SelectItem>
+                                        )}
+                                    </SelectContent>
+                                </Select>
+                                <FormMessage />
+                            </FormItem>
                         )} />
                         <FormField control={form.control} name="state" render={({ field }) => (
-                            <FormItem><FormLabel>State</FormLabel><FormControl><Input placeholder="Maharashtra" {...field} /></FormControl><FormMessage /></FormItem>
+                            <FormItem><FormLabel>State</FormLabel><FormControl><Input placeholder="Maharashtra" {...field} readOnly /></FormControl><FormMessage /></FormItem>
                         )} />
                         <FormField control={form.control} name="zip" render={({ field }) => (
-                            <FormItem><FormLabel>ZIP Code</FormLabel><FormControl><Input placeholder="400001" {...field} /></FormControl><FormMessage /></FormItem>
+                            <FormItem><FormLabel>ZIP Code</FormLabel><FormControl><Input placeholder="400001" {...field} readOnly /></FormControl><FormMessage /></FormItem>
                         )} />
                         <FormField control={form.control} name="digipin" render={({ field }) => (
                             <FormItem><FormLabel>DigiPIN</FormLabel><FormControl><Input placeholder="e.g., MU400001A01" {...field} /></FormControl><FormMessage /></FormItem>
