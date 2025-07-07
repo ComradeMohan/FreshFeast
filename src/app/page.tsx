@@ -6,6 +6,7 @@ import { ProductCard } from '@/components/ProductCard'
 import { ArrowRight, LoaderCircle } from 'lucide-react'
 import { useAuthState } from 'react-firebase-hooks/auth'
 import { auth } from '@/lib/firebase'
+import { cn } from '@/lib/utils'
 
 const products = [
   {
@@ -75,7 +76,7 @@ export default function Home() {
         </section>
       )}
 
-      <section id="products" className="w-full py-12 md:py-24 lg:py-32">
+      <section id="products" className={cn("w-full py-12 md:py-24 lg:py-32", user && "pt-0 md:pt-0 lg:pt-0")}>
         <div className="container px-4 md:px-6">
           <h2 className="text-3xl font-headline font-bold tracking-tighter text-center sm:text-4xl md:text-5xl">
             Our Most Popular Boxes

@@ -13,12 +13,6 @@ import React, { useState, useEffect } from 'react'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { useRouter } from 'next/navigation'
 
-const navLinks = [
-  { href: '/', label: 'Home' },
-  { href: '/#products', label: 'All Fruit Boxes' },
-  { href: '/careers', label: 'Careers' },
-]
-
 export function Header() {
   const isMobile = useIsMobile()
   const router = useRouter()
@@ -26,6 +20,12 @@ export function Header() {
   const { toast } = useToast()
   const [showNotificationButton, setShowNotificationButton] = useState(false)
   const [isSheetOpen, setIsSheetOpen] = useState(false)
+
+  const navLinks = [
+    ...(!user ? [{ href: '/', label: 'Home' }] : []),
+    { href: '/#products', label: 'All Fruit Boxes' },
+    { href: '/careers', label: 'Careers' },
+  ]
 
   useEffect(() => {
     if (user && typeof window !== 'undefined' && 'Notification' in window) {
@@ -184,8 +184,8 @@ export function Header() {
             </Sheet>
           </div>
         ) : (
-          <>
-            <nav className="flex items-center gap-6 text-sm flex-1">
+          <div className="flex flex-1 items-center justify-end gap-6">
+            <nav className="flex items-center gap-6 text-sm">
               {navLinks.map(({ href, label }) => (
                 <Link
                   key={href}
@@ -205,7 +205,7 @@ export function Header() {
               </Button>
               {renderAuthButtons(false)}
             </div>
-          </>
+          </div>
         )}
       </div>
     </header>
