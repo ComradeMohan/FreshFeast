@@ -106,8 +106,9 @@ export async function getServiceableAreas() {
                 id: doc.id,
                 name: data.name,
                 pincode: data.pincode,
+                state: data.state,
             };
-        }) as {id: string, name: string, pincode: string}[];
+        }) as {id: string, name: string, pincode: string, state: string}[];
     } catch (error) {
         console.error("Error fetching serviceable areas:", error);
         return [];

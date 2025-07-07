@@ -8,6 +8,7 @@ import { z } from 'zod'
 const formSchema = z.object({
   name: z.string().min(1),
   pincode: z.string().min(6),
+  state: z.string().min(1),
 })
 
 export async function addArea(values: z.infer<typeof formSchema>) {
@@ -15,6 +16,7 @@ export async function addArea(values: z.infer<typeof formSchema>) {
     await addDoc(collection(db, 'serviceableAreas'), {
       name: values.name,
       pincode: values.pincode,
+      state: values.state,
       createdAt: serverTimestamp(),
     })
     revalidatePath('/admin/areas')

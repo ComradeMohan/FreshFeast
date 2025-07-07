@@ -20,6 +20,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 
 const formSchema = z.object({
   name: z.string().min(1, { message: "Area name is required" }),
+  state: z.string().min(1, { message: "State is required" }),
   pincode: z.string().min(1, { message: "Pincode is required" }).regex(/^\d{6}$/, { message: "Pincode must be 6 digits" }),
 })
 
@@ -27,6 +28,7 @@ type Area = {
   id: string
   name: string
   pincode: string
+  state: string
 }
 
 export default function ManageAreasPage() {
@@ -37,7 +39,7 @@ export default function ManageAreasPage() {
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
-    defaultValues: { name: "", pincode: "" },
+    defaultValues: { name: "", state: "", pincode: "" },
   })
 
   useEffect(() => {
@@ -101,6 +103,9 @@ export default function ManageAreasPage() {
                             <FormField control={form.control} name="name" render={({ field }) => (
                                 <FormItem><FormLabel>Area Name</FormLabel><FormControl><Input placeholder="e.g., Bandra West" {...field} /></FormControl><FormMessage /></FormItem>
                             )} />
+                            <FormField control={form.control} name="state" render={({ field }) => (
+                                <FormItem><FormLabel>State</FormLabel><FormControl><Input placeholder="e.g., Maharashtra" {...field} /></FormControl><FormMessage /></FormItem>
+                            )} />
                             <FormField control={form.control} name="pincode" render={({ field }) => (
                                 <FormItem><FormLabel>Pincode</FormLabel><FormControl><Input placeholder="400050" {...field} /></FormControl><FormMessage /></FormItem>
                             )} />
@@ -128,6 +133,7 @@ export default function ManageAreasPage() {
                                 <TableHeader>
                                     <TableRow>
                                         <TableHead>Area Name</TableHead>
+                                        <TableHead>State</TableHead>
                                         <TableHead>Pincode</TableHead>
                                         <TableHead className="text-right">Actions</TableHead>
                                     </TableRow>
@@ -136,6 +142,7 @@ export default function ManageAreasPage() {
                                     {areas.length > 0 ? areas.map(area => (
                                         <TableRow key={area.id}>
                                             <TableCell>{area.name}</TableCell>
+                                            <TableCell>{area.state}</TableCell>
                                             <TableCell>{area.pincode}</TableCell>
                                             <TableCell className="text-right">
                                                 <AlertDialog>
@@ -161,7 +168,7 @@ export default function ManageAreasPage() {
                                         </TableRow>
                                     )) : (
                                         <TableRow>
-                                            <TableCell colSpan={3} className="h-24 text-center">
+                                            <TableCell colSpan={4} className="h-24 text-center">
                                                 <MapPin className="mx-auto h-12 w-12 text-muted-foreground" />
                                                 <p className="mt-4 font-medium">No areas added yet.</p>
                                                 <p className="text-muted-foreground text-sm">Use the form to add your first serviceable area.</p>

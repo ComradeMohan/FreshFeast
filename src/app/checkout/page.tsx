@@ -26,6 +26,7 @@ type Area = {
   id: string
   name: string
   pincode: string
+  state: string
 }
 
 const deliveryInfoSchema = z.object({
@@ -62,7 +63,7 @@ export default function CheckoutPage() {
     const selectedArea = areas.find(area => area.name === selectedAreaName);
     if (selectedArea) {
       form.setValue('zip', selectedArea.pincode, { shouldValidate: true });
-      form.setValue('state', 'Maharashtra', { shouldValidate: true }); // Assuming all areas are in MH for now
+      form.setValue('state', selectedArea.state, { shouldValidate: true });
     }
   }, [selectedAreaName, areas, form]);
 
@@ -194,10 +195,10 @@ export default function CheckoutPage() {
                             </FormItem>
                         )} />
                         <FormField control={form.control} name="state" render={({ field }) => (
-                            <FormItem><FormLabel>State</FormLabel><FormControl><Input placeholder="Maharashtra" {...field} readOnly /></FormControl><FormMessage /></FormItem>
+                            <FormItem><FormLabel>State</FormLabel><FormControl><Input placeholder="State" {...field} readOnly /></FormControl><FormMessage /></FormItem>
                         )} />
                         <FormField control={form.control} name="zip" render={({ field }) => (
-                            <FormItem><FormLabel>ZIP Code</FormLabel><FormControl><Input placeholder="400001" {...field} readOnly /></FormControl><FormMessage /></FormItem>
+                            <FormItem><FormLabel>ZIP Code</FormLabel><FormControl><Input placeholder="ZIP Code" {...field} readOnly /></FormControl><FormMessage /></FormItem>
                         )} />
                         <FormField control={form.control} name="digipin" render={({ field }) => (
                             <FormItem><FormLabel>DigiPIN</FormLabel><FormControl><Input placeholder="e.g., MU400001A01" {...field} /></FormControl><FormMessage /></FormItem>
