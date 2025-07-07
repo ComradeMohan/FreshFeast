@@ -17,6 +17,7 @@ import { Input } from '@/components/ui/input'
 import { useToast } from '@/hooks/use-toast'
 import { LoaderCircle, UserCircle, LogOut } from 'lucide-react'
 import { Skeleton } from '@/components/ui/skeleton'
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion"
 
 const passwordFormSchema = z.object({
   newPassword: z.string().min(6, { message: "Password must be at least 6 characters" }),
@@ -136,57 +137,62 @@ export default function ProfilePage() {
 
         <Card>
           <CardHeader>
-            <CardTitle>Change Password</CardTitle>
-            <CardDescription>Enter a new password for your account.</CardDescription>
+            <CardTitle>Account Settings</CardTitle>
+            <CardDescription>Manage your password and other account settings.</CardDescription>
           </CardHeader>
           <CardContent>
-            <Form {...form}>
-              <form onSubmit={form.handleSubmit(onSubmitPassword)} className="space-y-6">
-                <FormField
-                  control={form.control}
-                  name="newPassword"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>New Password</FormLabel>
-                      <FormControl>
-                        <Input type="password" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                 <FormField
-                  control={form.control}
-                  name="confirmPassword"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Confirm New Password</FormLabel>
-                      <FormControl>
-                        <Input type="password" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <Button type="submit" disabled={form.formState.isSubmitting}>
-                   {form.formState.isSubmitting ? <LoaderCircle className="animate-spin" /> : "Update Password"}
-                </Button>
-              </form>
-            </Form>
+            <Accordion type="single" collapsible className="w-full">
+              <AccordionItem value="item-1">
+                <AccordionTrigger>Change Password</AccordionTrigger>
+                <AccordionContent>
+                  <Form {...form}>
+                    <form onSubmit={form.handleSubmit(onSubmitPassword)} className="space-y-6 pt-4">
+                      <FormField
+                        control={form.control}
+                        name="newPassword"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>New Password</FormLabel>
+                            <FormControl>
+                              <Input type="password" {...field} />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      <FormField
+                        control={form.control}
+                        name="confirmPassword"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Confirm New Password</FormLabel>
+                            <FormControl>
+                              <Input type="password" {...field} />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      <Button type="submit" disabled={form.formState.isSubmitting}>
+                        {form.formState.isSubmitting ? <LoaderCircle className="animate-spin" /> : "Update Password"}
+                      </Button>
+                    </form>
+                  </Form>
+                </AccordionContent>
+              </AccordionItem>
+              <AccordionItem value="item-2" className="border-b-0">
+                <AccordionTrigger>Logout</AccordionTrigger>
+                <AccordionContent>
+                  <p className="mb-4 text-sm text-muted-foreground">Click the button below to end your current session.</p>
+                  <Button variant="destructive" onClick={handleLogout}>
+                      <LogOut className="mr-2 h-4 w-4" /> Logout
+                  </Button>
+                </AccordionContent>
+              </AccordionItem>
+            </Accordion>
           </CardContent>
         </Card>
 
-        <Card>
-            <CardHeader>
-                <CardTitle>Logout</CardTitle>
-                <CardDescription>End your current session.</CardDescription>
-            </CardHeader>
-            <CardContent>
-                 <Button variant="destructive" onClick={handleLogout}>
-                    <LogOut className="mr-2 h-4 w-4" /> Logout
-                </Button>
-            </CardContent>
-        </Card>
       </div>
     </div>
   )
