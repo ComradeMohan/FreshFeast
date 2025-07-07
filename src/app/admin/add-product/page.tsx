@@ -7,18 +7,19 @@ import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { supabase } from '@/lib/supabase'
-import { addProduct } from './actions'
+import { addProduct, updateProduct } from './actions'
 
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { useToast } from '@/hooks/use-toast'
-import { ArrowLeft, LoaderCircle } from 'lucide-react'
+import { ArrowLeft, LoaderCircle, Pencil } from 'lucide-react'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 
-const formSchema = z.object({
+const addFormSchema = z.object({
   file_name: z.string().min(1, { message: "Package name is required" }),
   description: z.string().min(1, { message: "Description is required" }),
   price_weekly: z.coerce.number().positive({ message: "Weekly price must be a positive number" }),
@@ -26,9 +27,14 @@ const formSchema = z.object({
   image: z.any().refine((files) => files?.length == 1, "Image is required."),
 })
 
+const editFormSchema = addFormSchema.extend({
+  image: z.any().optional(),
+})
+
 type Product = {
   id: string
   file_name: string
+  description: string
   file_url: string
   price_weekly: number
   price_monthly: number
@@ -39,15 +45,18 @@ export default function AddProductPage() {
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [products, setProducts] = useState<Product[]>([])
   const [imagePreview, setImagePreview] = useState<string | null>(null)
+  
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false)
+  const [editingProduct, setEditingProduct] = useState<Product | null>(null)
+  const [editImagePreview, setEditImagePreview] = useState<string | null>(null)
 
-  const form = useForm<z.infer<typeof formSchema>>({
-    resolver: zodResolver(formSchema),
-    defaultValues: {
-      file_name: "",
-      description: "",
-      price_weekly: 0,
-      price_monthly: 0,
-    },
+  const addForm = useForm<z.infer<typeof addFormSchema>>({
+    resolver: zodResolver(addFormSchema),
+    defaultValues: { file_name: "", description: "", price_weekly: 0, price_monthly: 0, },
+  })
+  
+  const editForm = useForm<z.infer<typeof editFormSchema>>({
+    resolver: zodResolver(editFormSchema),
   })
 
   const fetchProducts = async () => {
@@ -66,9 +75,22 @@ export default function AddProductPage() {
 
   useEffect(() => {
     fetchProducts()
-  }, [])
+  }, [toast])
 
-  async function onSubmit(values: z.infer<typeof formSchema>) {
+  useEffect(() => {
+    if (editingProduct) {
+      editForm.reset({
+        file_name: editingProduct.file_name,
+        description: editingProduct.description,
+        price_weekly: editingProduct.price_weekly,
+        price_monthly: editingProduct.price_monthly,
+      });
+      setEditImagePreview(editingProduct.file_url);
+    }
+  }, [editingProduct, editForm]);
+
+
+  async function onAddSubmit(values: z.infer<typeof addFormSchema>) {
     setIsSubmitting(true)
     
     const formData = new FormData()
@@ -79,39 +101,66 @@ export default function AddProductPage() {
     formData.append('image', values.image[0])
 
     const result = await addProduct(formData)
-
     setIsSubmitting(false)
 
     if (result.error) {
-       toast({
-        variant: "destructive",
-        title: "Uh oh! Something went wrong.",
-        description: result.error,
-      })
+       toast({ variant: "destructive", title: "Uh oh! Something went wrong.", description: result.error })
     } else {
-       toast({
-        title: "Package added successfully!",
-        description: "The new package is now available for customers.",
-      })
-      form.reset();
+       toast({ title: "Package added successfully!", description: "The new package is now available for customers." })
+      addForm.reset();
       setImagePreview(null);
-      // Manually trigger a refresh of the products list
       await fetchProducts(); 
     }
   }
 
-  const handleImageChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+  async function onUpdateSubmit(values: z.infer<typeof editFormSchema>) {
+    if (!editingProduct) return;
+    setIsSubmitting(true);
+  
+    const formData = new FormData();
+    formData.append('id', editingProduct.id);
+    formData.append('file_name', values.file_name);
+    formData.append('description', values.description);
+    formData.append('price_weekly', values.price_weekly.toString());
+    formData.append('price_monthly', values.price_monthly.toString());
+    formData.append('existing_image_url', editingProduct.file_url);
+    if (values.image && values.image[0]) {
+      formData.append('image', values.image[0]);
+    }
+  
+    const result = await updateProduct(formData);
+    setIsSubmitting(false);
+  
+    if (result.error) {
+      toast({ variant: "destructive", title: "Update Failed", description: result.error });
+    } else {
+      toast({ title: "Package updated successfully!" });
+      setIsEditDialogOpen(false);
+      await fetchProducts();
+    }
+  }
+  
+
+  const handleAddImageChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file) {
       const reader = new FileReader();
-      reader.onloadend = () => {
-        setImagePreview(reader.result as string);
-      };
+      reader.onloadend = () => { setImagePreview(reader.result as string) };
       reader.readAsDataURL(file);
-      form.setValue("image", event.target.files);
+      addForm.setValue("image", event.target.files);
     } else {
-        setImagePreview(null);
-        form.setValue("image", null);
+      setImagePreview(null);
+      addForm.setValue("image", null);
+    }
+  };
+
+  const handleEditImageChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => { setEditImagePreview(reader.result as string) };
+      reader.readAsDataURL(file);
+      editForm.setValue("image", event.target.files);
     }
   };
   
@@ -124,93 +173,38 @@ export default function AddProductPage() {
           </Link>
         </Button>
         <div>
-          <h1 className="text-3xl font-headline font-bold tracking-tighter sm:text-4xl">Add New Package</h1>
-          <p className="text-muted-foreground mt-1">Fill in the details to add a new subscription package.</p>
+          <h1 className="text-3xl font-headline font-bold tracking-tighter sm:text-4xl">Manage Packages</h1>
+          <p className="text-muted-foreground mt-1">Add new subscription packages or edit existing ones.</p>
         </div>
       </div>
        <Card>
-        <CardContent className="pt-6">
-           <Form {...form}>
-            <form onSubmit={form.handleSubmit(onSubmit)} className="grid gap-6">
-               <FormField
-                control={form.control}
-                name="file_name"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Package Name</FormLabel>
-                    <FormControl>
-                      <Input placeholder="e.g., Classic Harvest Box" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name="description"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Description</FormLabel>
-                    <FormControl>
-                      <Textarea placeholder="Describe the contents and benefits of the package." {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+        <CardHeader>
+          <CardTitle>Add New Package</CardTitle>
+        </CardHeader>
+        <CardContent>
+           <Form {...addForm}>
+            <form onSubmit={addForm.handleSubmit(onAddSubmit)} className="grid gap-6">
+               <FormField control={addForm.control} name="file_name" render={({ field }) => (
+                  <FormItem><FormLabel>Package Name</FormLabel><FormControl><Input placeholder="e.g., Classic Harvest Box" {...field} /></FormControl><FormMessage /></FormItem>
+                )} />
+              <FormField control={addForm.control} name="description" render={({ field }) => (
+                  <FormItem><FormLabel>Description</FormLabel><FormControl><Textarea placeholder="Describe the contents and benefits of the package." {...field} /></FormControl><FormMessage /></FormItem>
+                )} />
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-                <FormField
-                  control={form.control}
-                  name="price_weekly"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Weekly Price (₹)</FormLabel>
-                      <FormControl>
-                        <Input type="number" placeholder="899" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                 <FormField
-                  control={form.control}
-                  name="price_monthly"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Monthly Price (₹)</FormLabel>
-                      <FormControl>
-                        <Input type="number" placeholder="3299" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
+                <FormField control={addForm.control} name="price_weekly" render={({ field }) => (
+                    <FormItem><FormLabel>Weekly Price (₹)</FormLabel><FormControl><Input type="number" placeholder="899" {...field} /></FormControl><FormMessage /></FormItem>
+                  )} />
+                 <FormField control={addForm.control} name="price_monthly" render={({ field }) => (
+                    <FormItem><FormLabel>Monthly Price (₹)</FormLabel><FormControl><Input type="number" placeholder="3299" {...field} /></FormControl><FormMessage /></FormItem>
+                  )} />
               </div>
-              <FormField
-                control={form.control}
-                name="image"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Package Image</FormLabel>
-                    <FormControl>
-                      <Input 
-                        type="file" 
-                        accept="image/*"
-                        onChange={handleImageChange}
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+              <FormField control={addForm.control} name="image" render={({ field }) => (
+                  <FormItem><FormLabel>Package Image</FormLabel><FormControl><Input type="file" accept="image/*" onChange={handleAddImageChange} /></FormControl><FormMessage /></FormItem>
+                )} />
               
               {imagePreview && (
-                <div className="mt-4">
-                    <p className="text-sm font-medium mb-2">Image Preview:</p>
-                    <Image src={imagePreview} alt="Image preview" width={200} height={200} className="rounded-md object-cover" />
-                </div>
+                <div className="mt-4"><p className="text-sm font-medium mb-2">Image Preview:</p><Image src={imagePreview} alt="Image preview" width={200} height={200} className="rounded-md object-cover" /></div>
               )}
-
 
               <Button type="submit" className="w-full sm:w-auto" disabled={isSubmitting}>
                 {isSubmitting ? <LoaderCircle className="animate-spin" /> : "Add Package"}
@@ -231,7 +225,7 @@ export default function AddProductPage() {
                     <TableRow>
                         <TableHead>Image</TableHead>
                         <TableHead>Name</TableHead>
-                        <TableHead>Public URL</TableHead>
+                        <TableHead>Actions</TableHead>
                     </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -242,9 +236,9 @@ export default function AddProductPage() {
                             </TableCell>
                             <TableCell>{product.file_name}</TableCell>
                             <TableCell>
-                                <Link href={product.file_url} target="_blank" rel="noopener noreferrer" className="text-sm underline">
-                                    View URL
-                                </Link>
+                                <Button variant="outline" size="icon" onClick={() => { setEditingProduct(product); setIsEditDialogOpen(true); }}>
+                                    <Pencil className="h-4 w-4" />
+                                </Button>
                             </TableCell>
                         </TableRow>
                     ))}
@@ -252,6 +246,46 @@ export default function AddProductPage() {
             </Table>
         </CardContent>
       </Card>
+
+      <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle>Edit Package</DialogTitle>
+            <DialogDescription>
+              Make changes to your package here. Click save when you're done.
+            </DialogDescription>
+          </DialogHeader>
+          <Form {...editForm}>
+            <form onSubmit={editForm.handleSubmit(onUpdateSubmit)} className="grid gap-4 py-4">
+              <FormField control={editForm.control} name="file_name" render={({ field }) => (
+                <FormItem><FormLabel>Package Name</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>
+              )} />
+              <FormField control={editForm.control} name="description" render={({ field }) => (
+                <FormItem><FormLabel>Description</FormLabel><FormControl><Textarea {...field} /></FormControl><FormMessage /></FormItem>
+              )} />
+              <div className="grid grid-cols-2 gap-4">
+                <FormField control={editForm.control} name="price_weekly" render={({ field }) => (
+                  <FormItem><FormLabel>Weekly Price (₹)</FormLabel><FormControl><Input type="number" {...field} /></FormControl><FormMessage /></FormItem>
+                )} />
+                <FormField control={editForm.control} name="price_monthly" render={({ field }) => (
+                  <FormItem><FormLabel>Monthly Price (₹)</FormLabel><FormControl><Input type="number" {...field} /></FormControl><FormMessage /></FormItem>
+                )} />
+              </div>
+              <FormField control={editForm.control} name="image" render={({ field }) => (
+                <FormItem><FormLabel>Change Image (Optional)</FormLabel><FormControl><Input type="file" accept="image/*" onChange={handleEditImageChange} /></FormControl><FormMessage /></FormItem>
+              )} />
+              {editImagePreview && (
+                <div><p className="text-sm font-medium mb-2">Image Preview:</p><Image src={editImagePreview} alt="Image preview" width={150} height={150} className="rounded-md object-cover" /></div>
+              )}
+              <DialogFooter>
+                <Button type="submit" disabled={isSubmitting}>
+                  {isSubmitting ? <LoaderCircle className="animate-spin" /> : "Save changes"}
+                </Button>
+              </DialogFooter>
+            </form>
+          </Form>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }
