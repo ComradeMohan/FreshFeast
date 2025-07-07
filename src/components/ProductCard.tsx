@@ -11,7 +11,7 @@ import {
 } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { ShoppingCart } from 'lucide-react'
-import { useCartBubble } from '@/hooks/use-cart-bubble'
+import { useCart } from '@/hooks/use-cart-bubble'
 
 type Package = {
   id: string
@@ -27,11 +27,7 @@ type ProductCardProps = {
 }
 
 export function ProductCard({ packageItem }: ProductCardProps) {
-  const { setShowCartBubble } = useCartBubble()
-
-  const handleAddToCart = () => {
-    setShowCartBubble(true)
-  }
+  const { addToCart } = useCart()
 
   return (
     <Card className="flex flex-col overflow-hidden h-full">
@@ -56,7 +52,7 @@ export function ProductCard({ packageItem }: ProductCardProps) {
                 <p className="text-xs text-muted-foreground">Weekly</p>
                 <p className="text-lg font-bold text-primary">₹{packageItem.price_weekly.toLocaleString()}</p>
             </div>
-            <Button onClick={handleAddToCart} size="sm" className="bg-accent hover:bg-accent/90 text-accent-foreground">
+            <Button onClick={addToCart} size="sm" className="bg-accent hover:bg-accent/90 text-accent-foreground">
                 <ShoppingCart className="mr-2 h-4 w-4" />
                 Add
             </Button>
@@ -66,7 +62,7 @@ export function ProductCard({ packageItem }: ProductCardProps) {
                 <p className="text-xs text-muted-foreground">Monthly</p>
                 <p className="text-lg font-bold text-primary">₹{packageItem.price_monthly.toLocaleString()}</p>
             </div>
-            <Button onClick={handleAddToCart} size="sm" className="bg-accent hover:bg-accent/90 text-accent-foreground">
+            <Button onClick={addToCart} size="sm" className="bg-accent hover:bg-accent/90 text-accent-foreground">
                 <ShoppingCart className="mr-2 h-4 w-4" />
                 Add
             </Button>

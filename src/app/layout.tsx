@@ -4,7 +4,7 @@ import { Header } from '@/components/layout/Header'
 import { Footer } from '@/components/layout/Footer'
 import { Toaster } from '@/components/ui/toaster'
 import { cn } from '@/lib/utils'
-import { CartBubbleProvider } from '@/hooks/use-cart-bubble'
+import { CartProvider } from '@/hooks/use-cart-bubble'
 
 export const metadata: Metadata = {
   title: 'Fresh Feast Hub',
@@ -31,14 +31,14 @@ export default function RootLayout({
         />
       </head>
       <body className={cn('font-body antialiased')}>
-        <CartBubbleProvider>
+        <CartProvider>
           <div className="relative flex min-h-dvh flex-col bg-background">
             <Header />
             <main className="flex-1">{children}</main>
             <Footer />
           </div>
           <Toaster />
-        </CartBubbleProvider>
+        </CartProvider>
       </body>
     </html>
   )

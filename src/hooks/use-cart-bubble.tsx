@@ -1,26 +1,27 @@
 'use client'
 
-import React, { createContext, useState, useContext, ReactNode } from 'react';
+import React, { createContext, useState, useContext, ReactNode, useCallback } from 'react';
 import Link from 'next/link';
 import { ShoppingCart } from 'lucide-react';
 
-type CartBubbleContextType = {
+type CartContextType = {
+  cartCount: number;
+  addToCart: () => void;
   showCartBubble: boolean;
-  setShowCartBubble: (show: boolean) => void;
 };
 
-const CartBubbleContext = createContext<CartBubbleContextType | undefined>(undefined);
+const CartContext = createContext<CartContextType | undefined>(undefined);
 
-export const useCartBubble = () => {
-  const context = useContext(CartBubbleContext);
+export const useCart = () => {
+  const context = useContext(CartContext);
   if (context === undefined) {
-    throw new Error('useCartBubble must be used within a CartBubbleProvider');
+    throw new Error('useCart must be used within a CartProvider');
   }
   return context;
 };
 
 function FloatingCartButton() {
-  const { showCartBubble } = useCartBubble();
+  const { showCartBubble } = useCart();
 
   if (!showCartBubble) {
     return null;
@@ -38,13 +39,23 @@ function FloatingCartButton() {
 }
 
 
-export const CartBubbleProvider = ({ children }: { children: ReactNode }) => {
+export const CartProvider = ({ children }: { children: ReactNode }) => {
+  const [cartCount, setCartCount] = useState(0);
   const [showCartBubble, setShowCartBubble] = useState(false);
 
+  const addToCart = useCallback(() => {
+    setCartCount((count) => count + 1);
+    if (!showCartBubble) {
+        setShowCartBubble(true);
+    }
+  }, [showCartBubble]);
+
+  const value = { cartCount, addToCart, showCartBubble };
+
   return (
-    <CartBubbleContext.Provider value={{ showCartBubble, setShowCartBubble }}>
+    <CartContext.Provider value={value}>
       {children}
       <FloatingCartButton />
-    </CartBubbleContext.Provider>
+    </CartContext.Provider>
   );
 };

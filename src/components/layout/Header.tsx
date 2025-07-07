@@ -12,6 +12,7 @@ import { useToast } from '@/hooks/use-toast'
 import React, { useState, useEffect } from 'react'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { useRouter } from 'next/navigation'
+import { useCart } from '@/hooks/use-cart-bubble'
 
 export function Header() {
   const [hasMounted, setHasMounted] = useState(false);
@@ -21,6 +22,7 @@ export function Header() {
   const { toast } = useToast()
   const [showNotificationButton, setShowNotificationButton] = useState(false)
   const [isSheetOpen, setIsSheetOpen] = useState(false)
+  const { cartCount } = useCart()
 
   useEffect(() => {
     setHasMounted(true);
@@ -184,7 +186,20 @@ export function Header() {
         </Link>
         
         {isMobile ? (
-          <div className="flex-1 flex justify-end">
+          <div className="flex-1 flex justify-end items-center gap-2">
+            <Button variant="ghost" size="icon" asChild>
+              <Link href="/cart" className="relative">
+                <ShoppingCart className="h-5 w-5 text-muted-foreground" />
+                {cartCount > 0 && (
+                  <span 
+                      key={cartCount}
+                      className="absolute -top-2 -right-2 flex h-5 w-5 items-center justify-center rounded-full bg-accent text-xs font-bold text-accent-foreground animate-cart-pop">
+                      {cartCount}
+                  </span>
+                )}
+                <span className="sr-only">Shopping Cart</span>
+              </Link>
+            </Button>
             <Sheet open={isSheetOpen} onOpenChange={setIsSheetOpen}>
               <SheetTrigger asChild>
                 <Button variant="ghost" size="icon">
@@ -226,8 +241,15 @@ export function Header() {
             </nav>
             <div className="flex items-center gap-4">
               <Button variant="ghost" size="icon" asChild>
-                <Link href="/cart">
+                <Link href="/cart" className="relative">
                   <ShoppingCart className="h-5 w-5 text-muted-foreground" />
+                  {cartCount > 0 && (
+                    <span 
+                        key={cartCount}
+                        className="absolute -top-2 -right-2 flex h-5 w-5 items-center justify-center rounded-full bg-accent text-xs font-bold text-accent-foreground animate-cart-pop">
+                        {cartCount}
+                    </span>
+                  )}
                   <span className="sr-only">Shopping Cart</span>
                 </Link>
               </Button>
