@@ -4,7 +4,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { Users, Package, DollarSign, PlusCircle } from 'lucide-react';
+import { Users, Package, DollarSign, PlusCircle, UserCheck } from 'lucide-react';
 import Link from 'next/link';
 import { useEffect, useState } from "react";
 import { getShippingCharge } from "@/lib/settings";
@@ -39,6 +39,7 @@ export default function AdminDashboard() {
   const [totalRevenue, setTotalRevenue] = useState<number | string>('...');
   const [activeOrdersCount, setActiveOrdersCount] = useState<number | string>('...');
   const [deliveryAgentsCount, setDeliveryAgentsCount] = useState<number | string>('...');
+  const [pendingAgentsCount, setPendingAgentsCount] = useState<number | string>('...');
 
 
   useEffect(() => {
@@ -74,8 +75,8 @@ export default function AdminDashboard() {
         setTotalRevenue('₹0.00');
     });
 
-    // Delivery Agents Count
-    const agentsQuery = query(collection(db, "deliveryAgents"));
+    // Delivery Agents Count (Approved)
+    const agentsQuery = query(collection(db, "deliveryAgents"), where("status", "==", "approved"));
     const unsubscribeAgents = onSnapshot(agentsQuery, (snapshot) => {
         setDeliveryAgentsCount(snapshot.size);
     }, (error) => {
@@ -83,20 +84,47 @@ export default function AdminDashboard() {
         setDeliveryAgentsCount(0);
     });
 
+    // Pending Agents Count
+    const pendingAgentsQuery = query(collection(db, "deliveryAgents"), where("status", "==", "pending_approval"));
+    const unsubscribePending = onSnapshot(pendingAgentsQuery, (snapshot) => {
+      setPendingAgentsCount(snapshot.size);
+    }, (error) => {
+      console.error("Error fetching pending agents:", error);
+      setPendingAgentsCount(0);
+    })
+
 
     return () => {
       unsubscribeRecent();
       unsubscribeActive();
       unsubscribeRevenue();
       unsubscribeAgents();
+      unsubscribePending();
     }
   }, []);
 
   const stats = [
-    { title: 'Total Revenue', value: totalRevenue, icon: DollarSign },
-    { title: 'Active Orders', value: activeOrdersCount, icon: Package },
-    { title: 'Delivery Agents', value: deliveryAgentsCount, icon: Users },
+    { title: 'Total Revenue', value: totalRevenue, icon: DollarSign, href: null },
+    { title: 'Active Orders', value: activeOrdersCount, icon: Package, href: null },
+    { title: 'Delivery Agents', value: deliveryAgentsCount, icon: Users, href: '/admin/agents' },
+    { title: 'Pending Agents', value: pendingAgentsCount, icon: UserCheck, href: '/admin/agents' },
   ]
+
+  const StatCard = ({ title, value, icon: Icon, href }: { title: string, value: number | string, icon: React.ElementType, href: string | null }) => {
+    const CardComponent = (
+        <Card className="hover:bg-muted/50 transition-colors">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">{title}</CardTitle>
+                <Icon className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+                {loading ? <Skeleton className="h-8 w-24" /> : <div className="text-2xl font-bold">{value}</div>}
+            </CardContent>
+        </Card>
+    )
+
+    return href ? <Link href={href}>{CardComponent}</Link> : CardComponent;
+  }
 
   return (
     <div className="container mx-auto px-4 py-12 md:py-16">
@@ -105,25 +133,25 @@ export default function AdminDashboard() {
             <h1 className="text-3xl font-headline font-bold tracking-tighter sm:text-4xl">Admin Dashboard</h1>
             <p className="text-muted-foreground mt-1">Manage your store, packages, and deliveries.</p>
         </div>
-        <Button asChild>
-          <Link href="/admin/add-product">
-            <PlusCircle className="mr-2 h-4 w-4" />
-            Add New Package
-          </Link>
-        </Button>
+        <div className="flex items-center gap-2">
+            <Button asChild>
+              <Link href="/admin/agents">
+                <Users className="mr-2 h-4 w-4" />
+                Manage Agents
+              </Link>
+            </Button>
+            <Button asChild>
+              <Link href="/admin/add-product">
+                <PlusCircle className="mr-2 h-4 w-4" />
+                Add Package
+              </Link>
+            </Button>
+        </div>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-3 mb-8">
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4 mb-8">
         {stats.map(stat => (
-          <Card key={stat.title}>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">{stat.title}</CardTitle>
-              <stat.icon className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              {loading ? <Skeleton className="h-8 w-24" /> : <div className="text-2xl font-bold">{stat.value}</div>}
-            </CardContent>
-          </Card>
+          <StatCard key={stat.title} title={stat.title} value={stat.value} icon={stat.icon} href={stat.href} />
         ))}
       </div>
 

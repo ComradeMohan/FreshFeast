@@ -66,12 +66,14 @@ export function Header() {
 
   const adminNavLinks = [
       { href: '/admin/dashboard', label: 'Dashboard' },
+      { href: '/admin/agents', label: 'Agents' },
       { href: '/#packages', label: 'Our Packages' },
   ];
   
   const loggedOutNavLinks = [
       { href: '/', label: 'Home' },
       { href: '/#packages', label: 'Our Packages' },
+      { href: '/careers', label: 'Careers' },
   ];
   
   const currentNavLinks = hasMounted && user ? (isAdmin ? adminNavLinks : loggedInNavLinks) : loggedOutNavLinks;
