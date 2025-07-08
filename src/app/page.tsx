@@ -63,24 +63,38 @@ export default function Home() {
   return (
     <div className="flex flex-col">
       {!user && (
-        <section className="w-full py-12 md:py-24 lg:py-32 bg-primary/10">
+        <section className="w-full py-12 md:py-24 lg:py-32 bg-primary/10 overflow-hidden">
           <div className="container px-4 md:px-6 text-center">
-            <div className="max-w-3xl mx-auto">
-              <h1 className="text-4xl font-headline font-bold tracking-tighter sm:text-5xl md:text-6xl text-primary">
+            <div className="max-w-3xl mx-auto flex flex-col items-center">
+              <h1 
+                className="text-4xl font-headline font-bold tracking-tighter sm:text-5xl md:text-6xl text-primary opacity-0 animate-fade-in-up"
+                style={{ animationDelay: '0.1s' }}
+              >
                 Fresh Fruit Boxes, Delivered to You
               </h1>
-              <p className="mt-4 text-muted-foreground md:text-xl">
+              <p 
+                className="mt-4 text-muted-foreground md:text-xl max-w-xl opacity-0 animate-fade-in-up"
+                style={{ animationDelay: '0.2s' }}
+              >
                 Experience the taste of nature with our curated fruit boxes. Hand-picked, fresh, and delivered right to your doorstep.
               </p>
-              <div className="mt-6 inline-flex items-center rounded-lg border border-dashed border-primary/50 bg-background px-4 py-2 text-base font-medium text-primary shadow-sm">
+              <div 
+                className="mt-6 inline-flex items-center rounded-lg border border-dashed border-primary/50 bg-background px-4 py-2 text-base font-medium text-primary shadow-sm opacity-0 animate-fade-in-up"
+                style={{ animationDelay: '0.3s' }}
+              >
                 <Truck className="mr-3 h-5 w-5" />
                 <span>Free Delivery: 6 AM - 9 AM</span>
               </div>
-              <Button asChild size="lg" className="mt-6 bg-accent hover:bg-accent/90 text-accent-foreground">
-                <Link href="#packages">
-                  Shop Now <ArrowRight className="ml-2 h-5 w-5" />
-                </Link>
-              </Button>
+              <div 
+                className="opacity-0 animate-fade-in-up" 
+                style={{ animationDelay: '0.4s' }}
+              >
+                <Button asChild size="lg" className="mt-6 bg-accent hover:bg-accent/90 text-accent-foreground">
+                  <Link href="#packages">
+                    Shop Now <ArrowRight className="ml-2 h-5 w-5" />
+                  </Link>
+                </Button>
+              </div>
             </div>
           </div>
         </section>
