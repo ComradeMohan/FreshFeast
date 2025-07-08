@@ -4,14 +4,13 @@
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet'
-import { Menu, ShoppingCart, Bell, LogOut, UserCircle } from 'lucide-react'
+import { Menu, ShoppingCart, LogOut, UserCircle } from 'lucide-react'
 import { Logo } from '@/components/Logo'
 import { useIsMobile } from '@/hooks/use-mobile'
 import { useAuthState } from 'react-firebase-hooks/auth'
 import { auth, requestNotificationPermission, signOut, db } from '@/lib/firebase'
 import { useToast } from '@/hooks/use-toast'
-import React, { useState, useEffect } from 'react'
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
+import React, { useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { useCart } from '@/hooks/use-cart-bubble'
 import { doc, getDoc } from 'firebase/firestore'
@@ -25,6 +24,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
+import { ToastAction } from "@/components/ui/toast"
 
 
 export function Header() {
@@ -35,7 +35,7 @@ export function Header() {
   const [isAdmin, setIsAdmin] = useState(false)
   const [isAgent, setIsAgent] = useState(false)
   const { toast } = useToast()
-  const [showNotificationButton, setShowNotificationButton] = useState(false)
+  const [notificationPromptShown, setNotificationPromptShown] = useState(false)
   const [isSheetOpen, setIsSheetOpen] = useState(false)
   const { cartCount } = useCart()
 
@@ -103,19 +103,7 @@ export function Header() {
     ? (isAdmin ? adminNavLinks : (isAgent ? agentNavLinks : loggedInNavLinks))
     : loggedOutNavLinks;
 
-  useEffect(() => {
-    if (hasMounted && user && typeof window !== 'undefined' && 'Notification' in window) {
-      if (Notification.permission === 'default') {
-        setShowNotificationButton(true)
-      } else {
-        setShowNotificationButton(false)
-      }
-    } else {
-      setShowNotificationButton(false)
-    }
-  }, [user, hasMounted])
-
-  const handleEnableNotifications = async () => {
+  const handleEnableNotifications = useCallback(async () => {
     if (!user) return
     const token = await requestNotificationPermission(user.uid)
     if (token) {
@@ -123,16 +111,36 @@ export function Header() {
         title: 'Notifications Enabled!',
         description: "You'll now receive order updates.",
       })
-      setShowNotificationButton(false)
     } else {
       toast({
         variant: 'destructive',
         title: 'Notifications Blocked',
         description: 'Please enable notifications in your browser settings.',
       })
-      setShowNotificationButton(false)
     }
-  }
+  }, [user, toast])
+
+  useEffect(() => {
+    if (
+      hasMounted &&
+      user &&
+      !notificationPromptShown &&
+      typeof window !== 'undefined' &&
+      'Notification' in window &&
+      Notification.permission === 'default'
+    ) {
+      toast({
+        title: 'Get order updates',
+        description: 'Enable notifications to receive real-time updates about your delivery.',
+        action: (
+          <ToastAction altText="Enable" onClick={handleEnableNotifications}>
+            Enable
+          </ToastAction>
+        ),
+      })
+      setNotificationPromptShown(true)
+    }
+  }, [user, hasMounted, toast, notificationPromptShown, handleEnableNotifications])
   
   const handleLogout = async () => {
     await signOut(auth)
@@ -153,27 +161,6 @@ export function Header() {
       const fallback = user.email ? user.email.charAt(0).toUpperCase() : 'U';
       return (
         <>
-          {showNotificationButton && (
-            isMobileView ? (
-              <Button onClick={handleEnableNotifications} variant="outline" className="w-full">
-                <Bell className="mr-2 h-4 w-4" /> Enable Notifications
-              </Button>
-            ) : (
-              <TooltipProvider>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button variant="ghost" size="icon" onClick={handleEnableNotifications}>
-                      <Bell className="h-5 w-5 text-muted-foreground" />
-                      <span className="sr-only">Enable Notifications</span>
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent>
-                    <p>Enable Notifications</p>
-                  </TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
-            )
-          )}
           {isMobileView ? (
              <Button onClick={handleLogout} variant="destructive" className="w-full">
                 <LogOut className="mr-2 h-4 w-4" /> Logout
