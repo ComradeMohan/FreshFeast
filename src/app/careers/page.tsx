@@ -5,7 +5,7 @@ import { Truck, ArrowRight } from 'lucide-react'
 
 export default function CareersPage() {
   return (
-    <div className="container mx-auto px-4 py-12 md:py-24">
+    <div className="container mx-auto px-4 py-12 md:py-24 animate-fade-in">
       <div className="max-w-3xl mx-auto text-center">
         <h1 className="text-4xl font-headline font-bold tracking-tighter sm:text-5xl text-primary">
           Join Our Delivery Team

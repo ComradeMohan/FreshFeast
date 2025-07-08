@@ -4,7 +4,7 @@
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet'
-import { Menu, ShoppingCart, LogOut, UserCircle } from 'lucide-react'
+import { Menu, ShoppingCart, LogOut, UserCircle, Bell } from 'lucide-react'
 import { Logo } from '@/components/Logo'
 import { useIsMobile } from '@/hooks/use-mobile'
 import { useAuthState } from 'react-firebase-hooks/auth'
@@ -24,7 +24,8 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
-import { ToastAction } from "@/components/ui/toast"
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
+import { ThemeToggle } from './ThemeToggle'
 
 
 export function Header() {
@@ -35,13 +36,41 @@ export function Header() {
   const [isAdmin, setIsAdmin] = useState(false)
   const [isAgent, setIsAgent] = useState(false)
   const { toast } = useToast()
-  const [notificationPromptShown, setNotificationPromptShown] = useState(false)
   const [isSheetOpen, setIsSheetOpen] = useState(false)
   const { cartCount } = useCart()
+  const [notificationPermission, setNotificationPermission] = useState<"default" | "granted" | "denied">("default")
 
   useEffect(() => {
     setHasMounted(true);
+    if (typeof window !== 'undefined' && 'Notification' in window) {
+      setNotificationPermission(Notification.permission)
+    }
   }, []);
+
+  const handleRequestPermission = useCallback(async () => {
+    if (!user) return
+    const permission = await requestNotificationPermission(user.uid)
+    if (permission) {
+      setNotificationPermission('granted')
+      toast({
+        title: 'Notifications Enabled!',
+        description: "You'll now receive order updates.",
+      })
+    } else {
+      setNotificationPermission('denied')
+      toast({
+        variant: 'destructive',
+        title: 'Notifications Blocked',
+        description: 'Please enable notifications in your browser settings to receive updates.',
+      })
+    }
+  }, [user, toast])
+
+  useEffect(() => {
+    if (hasMounted && user && notificationPermission === 'default') {
+      handleRequestPermission()
+    }
+  }, [hasMounted, user, notificationPermission, handleRequestPermission])
 
   useEffect(() => {
     const checkUserRole = async () => {
@@ -103,45 +132,6 @@ export function Header() {
     ? (isAdmin ? adminNavLinks : (isAgent ? agentNavLinks : loggedInNavLinks))
     : loggedOutNavLinks;
 
-  const handleEnableNotifications = useCallback(async () => {
-    if (!user) return
-    const token = await requestNotificationPermission(user.uid)
-    if (token) {
-      toast({
-        title: 'Notifications Enabled!',
-        description: "You'll now receive order updates.",
-      })
-    } else {
-      toast({
-        variant: 'destructive',
-        title: 'Notifications Blocked',
-        description: 'Please enable notifications in your browser settings.',
-      })
-    }
-  }, [user, toast])
-
-  useEffect(() => {
-    if (
-      hasMounted &&
-      user &&
-      !notificationPromptShown &&
-      typeof window !== 'undefined' &&
-      'Notification' in window &&
-      Notification.permission === 'default'
-    ) {
-      toast({
-        title: 'Get order updates',
-        description: 'Enable notifications to receive real-time updates about your delivery.',
-        action: (
-          <ToastAction altText="Enable" onClick={handleEnableNotifications}>
-            Enable
-          </ToastAction>
-        ),
-      })
-      setNotificationPromptShown(true)
-    }
-  }, [user, hasMounted, toast, notificationPromptShown, handleEnableNotifications])
-  
   const handleLogout = async () => {
     await signOut(auth)
     toast({
@@ -229,24 +219,8 @@ export function Header() {
     )
   }
 
-  if (!hasMounted) {
-    return (
-      <header className="sticky top-0 z-50 w-full border-b border-border/40 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-        <div className="container flex h-16 items-center">
-          <Link href="/" className="mr-6 flex items-center space-x-2">
-            <Logo className="h-8 w-8 text-primary" />
-            <span className="font-bold font-headline sm:inline-block">
-              Fresh Feast Hub
-            </span>
-          </Link>
-          <div className="flex-1" />
-        </div>
-      </header>
-    );
-  }
-
-  return (
-    <header className="sticky top-0 z-50 w-full border-b border-border/40 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+  const renderHeader = () => (
+    <>
       <div className="container flex h-16 items-center">
         <Link href="/" className="mr-6 flex items-center space-x-2">
           <Logo className="h-8 w-8 text-primary" />
@@ -272,6 +246,7 @@ export function Header() {
                 </Link>
               </Button>
             )}
+            <ThemeToggle />
             <Sheet open={isSheetOpen} onOpenChange={setIsSheetOpen}>
               <SheetTrigger asChild>
                 <Button variant="ghost" size="icon">
@@ -327,11 +302,44 @@ export function Header() {
                   </Link>
                 </Button>
               )}
+              <ThemeToggle />
               {renderAuthButtons(false)}
             </div>
           </div>
         )}
       </div>
+       {hasMounted && user && notificationPermission === 'denied' && (
+        <Alert variant="destructive" className="rounded-none border-x-0">
+          <Bell className="h-4 w-4" />
+          <AlertTitle>Notifications Blocked</AlertTitle>
+          <AlertDescription>
+            You have blocked notifications. Please enable them in your browser settings to receive order updates.
+          </AlertDescription>
+        </Alert>
+      )}
+    </>
+  )
+
+
+  if (!hasMounted) {
+    return (
+      <header className="sticky top-0 z-50 w-full border-b border-border/40 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+        <div className="container flex h-16 items-center">
+          <Link href="/" className="mr-6 flex items-center space-x-2">
+            <Logo className="h-8 w-8 text-primary" />
+            <span className="font-bold font-headline sm:inline-block">
+              Fresh Feast Hub
+            </span>
+          </Link>
+          <div className="flex-1" />
+        </div>
+      </header>
+    );
+  }
+
+  return (
+    <header className="sticky top-0 z-50 w-full border-b border-border/40 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+      {renderHeader()}
     </header>
   )
 }

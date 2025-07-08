@@ -61,7 +61,7 @@ export default function Home() {
   }
 
   return (
-    <div className="flex flex-col">
+    <div className="flex flex-col animate-fade-in">
       {!user && (
         <section className="w-full py-12 md:py-24 lg:py-32 bg-primary/10 overflow-hidden">
           <div className="container px-4 md:px-6 text-center">

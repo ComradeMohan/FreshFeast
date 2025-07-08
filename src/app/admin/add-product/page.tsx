@@ -165,7 +165,7 @@ export default function AddProductPage() {
   };
   
   return (
-     <div className="container mx-auto px-4 py-12 md:py-16">
+     <div className="container mx-auto px-4 py-12 md:py-16 animate-fade-in">
       <div className="flex items-center mb-8 gap-4">
         <Button variant="outline" size="icon" asChild>
           <Link href="/admin/dashboard">

@@ -105,7 +105,7 @@ export default function ProfilePage() {
 
 
   return (
-    <div className="container mx-auto max-w-2xl px-4 py-12 md:py-16">
+    <div className="container mx-auto max-w-2xl px-4 py-12 md:py-16 animate-fade-in">
       <div className="flex items-center mb-8 gap-4">
         <UserCircle className="h-8 w-8 text-primary" />
         <div>

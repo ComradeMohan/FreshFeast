@@ -55,7 +55,7 @@ export default function CartPage() {
 
   if (!user) {
      return (
-      <div className="container mx-auto px-4 py-12 md:py-24 text-center">
+      <div className="container mx-auto px-4 py-12 md:py-24 text-center animate-fade-in">
         <h1 className="text-3xl font-headline font-bold">Your Cart is Empty</h1>
         <p className="text-muted-foreground mt-4">Please log in to see your cart and add items.</p>
         <Button asChild className="mt-6">
@@ -67,7 +67,7 @@ export default function CartPage() {
 
   if (cartItems.length === 0) {
     return (
-      <div className="container mx-auto px-4 py-12 md:py-24 text-center">
+      <div className="container mx-auto px-4 py-12 md:py-24 text-center animate-fade-in">
         <ShoppingCart className="mx-auto h-16 w-16 text-muted-foreground" />
         <h1 className="text-3xl font-headline font-bold mt-6">Your Cart is Empty</h1>
         <p className="text-muted-foreground mt-2">Looks like you haven't added any packages yet.</p>
@@ -80,7 +80,7 @@ export default function CartPage() {
 
 
   return (
-    <div className="container mx-auto px-4 py-12 md:py-24">
+    <div className="container mx-auto px-4 py-12 md:py-24 animate-fade-in">
       <h1 className="text-3xl font-headline font-bold tracking-tighter text-center sm:text-4xl md:text-5xl">
         Your Shopping Cart
       </h1>

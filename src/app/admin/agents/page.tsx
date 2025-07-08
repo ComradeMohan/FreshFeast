@@ -61,7 +61,7 @@ export default function ManageAgentsPage() {
     setSubmitting(agentId)
     const result = await approveAgent(agentId)
     if (result.success) {
-      toast({ title: "Agent Approved", description: "The agent is now active." })
+      toast({ title: "Agent Approved", description: "The agent is now active and has been notified." })
     } else {
       toast({ variant: 'destructive', title: "Approval Failed", description: result.error })
     }
@@ -83,7 +83,7 @@ export default function ManageAgentsPage() {
   const approvedAgents = agents.filter(a => a.status === 'approved')
 
   return (
-    <div className="container mx-auto px-4 py-12 md:py-16">
+    <div className="container mx-auto px-4 py-12 md:py-16 animate-fade-in">
       <div className="flex items-center mb-8 gap-4">
         <Button variant="outline" size="icon" asChild>
           <Link href="/admin/dashboard">

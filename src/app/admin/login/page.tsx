@@ -65,7 +65,7 @@ export default function AdminLoginPage() {
   }
 
   return (
-    <div className="flex items-center justify-center min-h-[calc(100vh-15rem)] py-12">
+    <div className="flex items-center justify-center min-h-[calc(100vh-15rem)] py-12 animate-fade-in">
       <Card className="mx-auto max-w-sm">
         <CardHeader className="items-center text-center">
             <Shield className="h-8 w-8 text-primary" />

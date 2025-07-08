@@ -58,7 +58,7 @@ export default function DeliveryDashboard() {
 
   if (!user) {
      return (
-      <div className="container mx-auto px-4 py-12 md:py-24 text-center">
+      <div className="container mx-auto px-4 py-12 md:py-24 text-center animate-fade-in">
         <h1 className="text-3xl font-headline font-bold">Please Log In</h1>
         <p className="text-muted-foreground mt-4">You need to be logged in to view your delivery dashboard.</p>
         <Button asChild className="mt-6">
@@ -69,7 +69,7 @@ export default function DeliveryDashboard() {
   }
 
   return (
-    <div className="container mx-auto px-4 py-12 md:py-16">
+    <div className="container mx-auto px-4 py-12 md:py-16 animate-fade-in">
       <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4 mb-8">
         <div>
             <h1 className="text-3xl font-headline font-bold tracking-tighter sm:text-4xl">Agent Dashboard</h1>

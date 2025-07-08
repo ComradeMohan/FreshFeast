@@ -48,7 +48,7 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="flex items-center justify-center min-h-[calc(100vh-15rem)] py-12">
+    <div className="flex items-center justify-center min-h-[calc(100vh-15rem)] py-12 animate-fade-in">
       <Card className="mx-auto max-w-sm">
         <CardHeader>
           <CardTitle className="text-2xl font-headline">Customer Login</CardTitle>

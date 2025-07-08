@@ -81,7 +81,7 @@ export default function OrdersPage() {
 
   if (!user) {
     return (
-      <div className="container mx-auto px-4 py-12 md:py-24 text-center">
+      <div className="container mx-auto px-4 py-12 md:py-24 text-center animate-fade-in">
         <h1 className="text-3xl font-headline font-bold">Please Log In</h1>
         <p className="text-muted-foreground mt-4">You need to be logged in to view your order history.</p>
         <Button asChild className="mt-6">
@@ -92,7 +92,7 @@ export default function OrdersPage() {
   }
 
   return (
-    <div className="container mx-auto px-4 py-12 md:py-16">
+    <div className="container mx-auto px-4 py-12 md:py-16 animate-fade-in">
         <div className="flex items-center mb-8 gap-4">
             <ListOrdered className="h-8 w-8 text-primary" />
             <div>
